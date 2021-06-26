@@ -1,36 +1,48 @@
 from numba import jit, cuda
 import random
 import unittest
+import numpy
 
-def updateCell(boardState, row, col):
-    #Count neighbors
-    neighbors = 0
+def updateCells(newCells, cells, maxRows, maxCols):
 
-    minRow = row - 1 if row > 0 else 0
-    maxRow = row + 1 if row + 1 < boardState.rows else row
-    minCol = col - 1 if col > 0 else 0
-    maxCol = col + 1 if col + 1 < boardState.cols else col
+    threadsPerBlock = 2
+    blocksPerGrid = maxRows * maxCols + (threadsPerBlock - 1)
 
-    for nRow in range(minRow, maxRow+1):
-        for nCol in range(minCol, maxCol+1):
-            neighbors += boardState.cells[nRow][nCol]
+    #updateCellsInt[blocksPerGrid, threadsPerBlock](newCells, cells, maxRows, maxCols)
+    updateCellsInt(newCells, cells, maxRows, maxCols)
 
-    if boardState.cells[row][col] == 1:
-        neighbors -= 1
 
-    if neighbors == 3:
-        boardState.newCells[row][col] = 1
-    elif neighbors < 2 or neighbors > 3:
-        boardState.newCells[row][col] = 0
-    else:
-        boardState.newCells[row][col] = boardState.cells[row][col]
+@jit
+def updateCellsInt(newCells, cells, maxRows, maxCols):
+
+    for row in range(0, maxRows):
+        for col in range(0, maxCols):
+
+            # Count neighbors, minus current cell
+            neighbors = -cells[row * maxRows + col]
+
+            minRow = row - 1 if row > 0 else 0
+            maxRow = row + 1 if row + 1 < maxRows else row
+            minCol = col - 1 if col > 0 else 0
+            maxCol = col + 1 if col + 1 < maxCols else col
+
+            for nRow in range(minRow, maxRow+1):
+                for nCol in range(minCol, maxCol+1):
+                    neighbors += cells[nRow * maxRows + nCol]
+
+            if neighbors == 3:
+                newCells[row * maxRows + col] = 1
+            elif neighbors < 2 or neighbors > 3:
+                newCells[row * maxRows + col] = 0
+            else:
+                newCells[row * maxRows + col] = cells[row * maxRows + col]
 
 class BoardState:
     def __init__(self, rows, cols):
         self.rows = rows
         self.cols = cols
-        self.cells = [[0 for col in range(cols)] for row in range(rows)]
-        self.newCells = [[0 for col in range(cols)] for row in range(rows)]
+        self.cells = numpy.zeros(rows * cols)
+        self.newCells = numpy.zeros(rows * cols)
 
     def fromString(string):
 
@@ -65,12 +77,11 @@ class BoardState:
         return
 
     def cellState(self, row, col):
-        return False if self.cells[row][col] == 0 else True
+        return False if self.cells[row * self.rows + col] == 0 else True
 
     def update(self):
-        for row in range(0, self.rows):
-            for col in range(0, self.cols):
-                updateCell(self, row, col)
+
+        updateCells(self.newCells, self.cells, self.rows, self.cols)
 
         newCells = self.newCells
         self.newCells = self.cells
@@ -78,18 +89,18 @@ class BoardState:
         return
 
     def addCell(self, row, col):
-        self.cells[row][col] = 1
+        self.cells[row * self.rows + col] = 1
         return
 
     def killCell(self, row, col):
-        self.cells[row][col] = 0
+        self.cells[row * self.rows + col] = 0
         return
 
     def toString(self):
         boardString = ""
         for row in range(0, self.rows):
             for col in range(0, self.cols):
-                boardString += "X" if self.cells[row][col] else "-"
+                boardString += "X" if self.cells[row * self.rows + col] else "-"
             if row < self.rows - 1:
                 boardString += "\n" 
         return boardString
