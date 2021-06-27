@@ -22,19 +22,6 @@ class GlScreen:
         glutDisplayFunc(self.drawScreen)
         glutIdleFunc(self.drawScreen)
 
-    def drawCell(self, x, y, width, height):
-        glBegin(GL_QUADS)
-        glVertex2f(x, y)
-        glVertex2f(x, y + height)
-        glVertex2f(x + width, y + height)
-        glVertex2f(x + width, y)
-        glEnd()
-
-    def drawScreen(self):
-        self.boardState.update()
-
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
-
         glLoadIdentity()
         glViewport(0, 0, self.displayWidth, self.displayHeight)
 
@@ -45,13 +32,26 @@ class GlScreen:
         glMatrixMode(GL_MODELVIEW)
         glLoadIdentity()
 
+    def drawScreen(self):
+        self.boardState.update()
+
+        width = self.displayWidth / self.boardState.cols
+        height = self.displayHeight / self.boardState.rows
+
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+
         glColor3f(0, 0, 1)
+        glBegin(GL_QUADS)
         for row in range(0, self.boardState.rows):
             for col in range(0, self.boardState.cols):
                 if self.boardState.cellState(row, col):
-                    width = self.displayWidth / self.boardState.cols
-                    height = self.displayHeight / self.boardState.rows
-                    self.drawCell(row * width, col * height, width, height)
+                    x = row * width
+                    y = col * height
+                    glVertex2f(x, y)
+                    glVertex2f(x, y + height)
+                    glVertex2f(x + width, y + height)
+                    glVertex2f(x + width, y)
+        glEnd()
 
         glutSwapBuffers()
 

@@ -3,44 +3,48 @@ import random
 import unittest
 import numpy
 
-
-
-
 class BoardState:
 
-    @cuda.jit('void(int32[:],int32[:],int32)')
-    def updateCell(newCells, cells, maxCols):
+    @cuda.jit('void(int32[:],int32[:],int32,int32,int32)')
+    def updateCell(newCells, cells, numRows, numCols,loopsPerThread):
+
         index = cuda.grid(1)
 
-        row = int(index / maxCols)
-        col = int(index % maxCols)
+        for x in range (index * loopsPerThread, index * loopsPerThread + loopsPerThread):
 
-        cellArrayPos = row * (maxCols + 2) + (col + 1)
+            row = int(x / numCols)
+            col = int(x % numCols)
 
-        maxCols += 2
+            if row > numRows:
+                return
 
-        # Count neighbors
-        neighborCount  = cells[cellArrayPos - maxCols - 1] & 1
-        neighborCount += cells[cellArrayPos - maxCols + 0] & 1
-        neighborCount += cells[cellArrayPos - maxCols + 1] & 1
 
-        neighborCount += cells[cellArrayPos - 1] & 1
-        neighborCount += cells[cellArrayPos + 1] & 1
+            cellArrayPos = row * (numCols + 2) + (col + 1)
 
-        neighborCount += cells[cellArrayPos + maxCols - 1] & 1
-        neighborCount += cells[cellArrayPos + maxCols + 0] & 1
-        neighborCount += cells[cellArrayPos + maxCols + 1] & 1
+            realNumCols = numCols + 2
 
-        if neighborCount < 2 or neighborCount > 3:
-            newCells[cellArrayPos] = 0
-        elif neighborCount == 3:
-            newCells[cellArrayPos] = 1
-        else:
-            newCells[cellArrayPos] = cells[cellArrayPos]
+            # Count neighbors
+            neighborCount  = cells[cellArrayPos - realNumCols - 1] & 1
+            neighborCount += cells[cellArrayPos - realNumCols + 0] & 1
+            neighborCount += cells[cellArrayPos - realNumCols + 1] & 1
+
+            neighborCount += cells[cellArrayPos - 1] & 1
+            neighborCount += cells[cellArrayPos + 1] & 1
+
+            neighborCount += cells[cellArrayPos + realNumCols - 1] & 1
+            neighborCount += cells[cellArrayPos + realNumCols + 0] & 1
+            neighborCount += cells[cellArrayPos + realNumCols + 1] & 1
+
+            if neighborCount < 2 or neighborCount > 3:
+                newCells[cellArrayPos] = 0
+            elif neighborCount == 3:
+                newCells[cellArrayPos] = 1
+            else:
+                newCells[cellArrayPos] = cells[cellArrayPos]
 
     def update(self):
 
-        BoardState.updateCell[self.threadsPerBlock, self.blocksPerGrid](self.newCells, self.cells, self.cols)
+        BoardState.updateCell[self.threadsPerBlock, self.blocksPerGrid](self.newCells, self.cells, self.rows, self.cols, self.loopsPerThread)
         cuda.synchronize()
 
         cells = self.cells
@@ -54,8 +58,17 @@ class BoardState:
         self.cells = numpy.zeros((rows+2) * (cols+2),dtype=numpy.int32)
         self.newCells = numpy.zeros((rows+2) * (cols+2),dtype=numpy.int32)
 
-        self.blocksPerGrid = 1024
-        self.threadsPerBlock = int(rows * cols / (self.blocksPerGrid)) + 1
+        self.blocksPerGrid = int(1024)
+        self.loopsPerThread = 8
+
+        # Need enough threads to operate on the whole board
+        threadsNeeded = 1 + int(rows * cols / self.loopsPerThread)
+
+        # Round up thread count to a multiple of block count
+        if (threadsNeeded % self.blocksPerGrid) :
+            threadsNeeded += int(self.blocksPerGrid - threadsNeeded % self.blocksPerGrid)
+
+        self.threadsPerBlock = int(threadsNeeded / self.blocksPerGrid)
 
 
     def fromString(string):
