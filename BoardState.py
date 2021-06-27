@@ -3,46 +3,60 @@ import random
 import unittest
 import numpy
 
-def updateCells(newCells, cells, maxRows, maxCols):
-
-    threadsPerBlock = 2
-    blocksPerGrid = maxRows * maxCols + (threadsPerBlock - 1)
-
-    #updateCellsInt[blocksPerGrid, threadsPerBlock](newCells, cells, maxRows, maxCols)
-    updateCellsInt(newCells, cells, maxRows, maxCols)
 
 
-@jit
-def updateCellsInt(newCells, cells, maxRows, maxCols):
-
-    for row in range(0, maxRows):
-        for col in range(0, maxCols):
-
-            # Count neighbors, minus current cell
-            neighbors = -cells[row * maxRows + col]
-
-            minRow = row - 1 if row > 0 else 0
-            maxRow = row + 1 if row + 1 < maxRows else row
-            minCol = col - 1 if col > 0 else 0
-            maxCol = col + 1 if col + 1 < maxCols else col
-
-            for nRow in range(minRow, maxRow+1):
-                for nCol in range(minCol, maxCol+1):
-                    neighbors += cells[nRow * maxRows + nCol]
-
-            if neighbors == 3:
-                newCells[row * maxRows + col] = 1
-            elif neighbors < 2 or neighbors > 3:
-                newCells[row * maxRows + col] = 0
-            else:
-                newCells[row * maxRows + col] = cells[row * maxRows + col]
 
 class BoardState:
+
+    @cuda.jit('void(int32[:],int32[:],int32)')
+    def updateCell(newCells, cells, maxCols):
+        index = cuda.grid(1)
+
+        row = int(index / maxCols)
+        col = int(index % maxCols)
+
+        cellArrayPos = row * (maxCols + 2) + (col + 1)
+
+        maxCols += 2
+
+        # Count neighbors
+        neighborCount  = cells[cellArrayPos - maxCols - 1] & 1
+        neighborCount += cells[cellArrayPos - maxCols + 0] & 1
+        neighborCount += cells[cellArrayPos - maxCols + 1] & 1
+
+        neighborCount += cells[cellArrayPos - 1] & 1
+        neighborCount += cells[cellArrayPos + 1] & 1
+
+        neighborCount += cells[cellArrayPos + maxCols - 1] & 1
+        neighborCount += cells[cellArrayPos + maxCols + 0] & 1
+        neighborCount += cells[cellArrayPos + maxCols + 1] & 1
+
+        if neighborCount < 2 or neighborCount > 3:
+            newCells[cellArrayPos] = 0
+        elif neighborCount == 3:
+            newCells[cellArrayPos] = 1
+        else:
+            newCells[cellArrayPos] = cells[cellArrayPos]
+
+    def update(self):
+
+        BoardState.updateCell[self.threadsPerBlock, self.blocksPerGrid](self.newCells, self.cells, self.cols)
+        cuda.synchronize()
+
+        cells = self.cells
+        self.cells = self.newCells
+        self.newCells = cells
+
     def __init__(self, rows, cols):
+
         self.rows = rows
         self.cols = cols
-        self.cells = numpy.zeros(rows * cols)
-        self.newCells = numpy.zeros(rows * cols)
+        self.cells = numpy.zeros((rows+2) * (cols+2),dtype=numpy.int32)
+        self.newCells = numpy.zeros((rows+2) * (cols+2),dtype=numpy.int32)
+
+        self.blocksPerGrid = 1024
+        self.threadsPerBlock = int(rows * cols / (self.blocksPerGrid)) + 1
+
 
     def fromString(string):
 
@@ -50,7 +64,7 @@ class BoardState:
         rows = len(rowStrings)
         cols = len(rowStrings[0])
 
-        for row in range(1, rows):
+        for row in range(0, rows):
             if len(rowStrings[row]) != cols:
                 raise Exception("Row lengths are not equal")
         
@@ -77,39 +91,24 @@ class BoardState:
         return
 
     def cellState(self, row, col):
-        return False if self.cells[row * self.rows + col] == 0 else True
-
-    def update(self):
-
-        updateCells(self.newCells, self.cells, self.rows, self.cols)
-
-        newCells = self.newCells
-        self.newCells = self.cells
-        self.cells = newCells
-        return
+        return False if self.cells[(row+1) * (self.cols+2) + (col+1)] == 0 else True
 
     def addCell(self, row, col):
-        self.cells[row * self.rows + col] = 1
+        self.cells[(row+1) * (self.cols+2) + (col+1)] = 1
         return
 
     def killCell(self, row, col):
-        self.cells[row * self.rows + col] = 0
+        self.cells[(row+1) * (self.cols+2) + (col+1)] = 0
         return
 
     def toString(self):
         boardString = ""
         for row in range(0, self.rows):
             for col in range(0, self.cols):
-                boardString += "X" if self.cells[row * self.rows + col] else "-"
+                boardString += "X" if self.cellState(row, col) else "-"
             if row < self.rows - 1:
                 boardString += "\n" 
         return boardString
-
-
-    def printCells(self):
-        print("Rows:", len(self.cells), " Cols:", len(self.cells[0]))
-        print(self.cells)
-        return
 
 
 class BoardStateTests(unittest.TestCase):

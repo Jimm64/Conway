@@ -18,7 +18,7 @@ class GlScreen:
         glutInitDisplayMode(GLUT_RGBA)
         glutInitWindowSize(self.displayWidth, self.displayHeight)
         glutInitWindowPosition(0, 0)
-        self.window = glutCreateWindow("Conway")
+        self.window = glutCreateWindow("Wrath of Conway")
         glutDisplayFunc(self.drawScreen)
         glutIdleFunc(self.drawScreen)
 
