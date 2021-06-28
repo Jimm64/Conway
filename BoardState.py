@@ -3,48 +3,90 @@ import random
 import unittest
 import numpy
 
+wordWidth = 32
+
 class BoardState:
 
-    @cuda.jit('void(int32[:],int32[:],int32,int32,int32)')
-    def updateCell(newCells, cells, numRows, numCols,loopsPerThread):
+    # Return array position and bit position
+    def cellIndex(self, row, col):
 
-        index = cuda.grid(1)
+        index = int((row + 1) * (self.wordsPerRow + 2) + col / wordWidth + 1)
+        bit = int(col % wordWidth)
+        return (index, bit)
 
-        for x in range (index * loopsPerThread, index * loopsPerThread + loopsPerThread):
+    @cuda.jit('void(int32[:],int32[:],int32,int32,int32,int32)')
+    def updateCell(newCells, cells, numRows, numCols, wordsPerRow, wordWidth):
 
-            row = int(x / numCols)
-            col = int(x % numCols)
+        gridId = cuda.grid(1)
 
-            if row > numRows:
-                return
+        wordsPerRow += 2
 
+        # [x][x][x][x][x]
+        # [x][W][W][W][x]
+        # [x][W][W][W][x]
+        # [x][W][W][W][x]
+        # [x][x][x][x][x]
 
-            cellArrayPos = row * (numCols + 2) + (col + 1)
+        # GridId 0 should work on index 6, which is wordsPerRow + 1
+        # GridId 2 should work on index 8, which is wordsPerRow  + 1 + 2
+        # GridId 3 should work on index 11, which is wordsPerRow * 2 + 1
 
-            realNumCols = numCols + 2
+        row = int(1 + gridId / wordsPerRow)
+        col = int(1 + gridId % wordsPerRow)
+
+        index = row * wordsPerRow + col
+
+        if row >= numRows + 1 or col >= wordsPerRow - 1:
+            return
+
+        numBits = numCols if col == wordsPerRow - 2 else wordWidth
+
+        for bit in range(0, numBits):
 
             # Count neighbors
-            neighborCount  = cells[cellArrayPos - realNumCols - 1] & 1
-            neighborCount += cells[cellArrayPos - realNumCols + 0] & 1
-            neighborCount += cells[cellArrayPos - realNumCols + 1] & 1
 
-            neighborCount += cells[cellArrayPos - 1] & 1
-            neighborCount += cells[cellArrayPos + 1] & 1
+            if bit < wordWidth - 1:
+                rightNeighborIndex = index
+                rightNeighborBit = bit + 1
+            else:
+                rightNeighborIndex = index + 1
+                rightNeighborBit = 0
 
-            neighborCount += cells[cellArrayPos + realNumCols - 1] & 1
-            neighborCount += cells[cellArrayPos + realNumCols + 0] & 1
-            neighborCount += cells[cellArrayPos + realNumCols + 1] & 1
+            if bit > 0:
+                leftNeighborIndex = index
+                leftNeighborBit = bit - 1
+            else:
+                leftNeighborIndex = index - 1
+                leftNeighborBit = wordWidth - 1
+
+            neighborCount = 0
+
+            # above and below
+            neighborCount  = (cells[index - wordsPerRow] & (1 << bit)) >> bit
+            neighborCount += (cells[index + wordsPerRow] & (1 << bit)) >> bit
+
+            # Up-left, down-left, left
+            neighborCount += (cells[leftNeighborIndex - wordsPerRow] & (1 << leftNeighborBit)) >> leftNeighborBit
+            neighborCount += (cells[leftNeighborIndex + wordsPerRow] & (1 << leftNeighborBit)) >> leftNeighborBit
+            neighborCount += (cells[leftNeighborIndex              ] & (1 << leftNeighborBit)) >> leftNeighborBit
+
+            # Up-right, down-right, right
+            neighborCount += (cells[rightNeighborIndex - wordsPerRow] & (1 << rightNeighborBit)) >> rightNeighborBit
+            neighborCount += (cells[rightNeighborIndex + wordsPerRow] & (1 << rightNeighborBit)) >> rightNeighborBit
+            neighborCount += (cells[rightNeighborIndex              ] & (1 << rightNeighborBit)) >> rightNeighborBit
 
             if neighborCount < 2 or neighborCount > 3:
-                newCells[cellArrayPos] = 0
+                newCells[index] &= ~(1 << bit)
             elif neighborCount == 3:
-                newCells[cellArrayPos] = 1
+                newCells[index] |= (1 << bit)
+            elif cells[index] & (1 << bit):
+                newCells[index] |= (1 << bit)
             else:
-                newCells[cellArrayPos] = cells[cellArrayPos]
+                newCells[index] &= ~(1 << bit)
 
     def update(self):
 
-        BoardState.updateCell[self.threadsPerBlock, self.blocksPerGrid](self.newCells, self.cells, self.rows, self.cols, self.loopsPerThread)
+        BoardState.updateCell[self.threadsPerBlock, self.blocksPerGrid](self.newCells, self.cells, self.rows, self.cols, self.wordsPerRow, self.wordWidth)
         cuda.synchronize()
 
         cells = self.cells
@@ -55,14 +97,19 @@ class BoardState:
 
         self.rows = rows
         self.cols = cols
-        self.cells = numpy.zeros((rows+2) * (cols+2),dtype=numpy.int32)
-        self.newCells = numpy.zeros((rows+2) * (cols+2),dtype=numpy.int32)
+        self.wordWidth = wordWidth
+
+        self.wordsPerRow = int(cols / wordWidth)
+        if (cols % wordWidth):
+            self.wordsPerRow += 1
+
+        self.cells = numpy.zeros((self.rows+2) * (self.wordsPerRow + 2), dtype=numpy.uint32)
+        self.newCells = numpy.zeros((self.rows+2) * (self.wordsPerRow + 2), dtype=numpy.uint32)
 
         self.blocksPerGrid = int(1024)
-        self.loopsPerThread = 8
 
         # Need enough threads to operate on the whole board
-        threadsNeeded = 1 + int(rows * cols / self.loopsPerThread)
+        threadsNeeded = 1 + int(self.rows * self.wordsPerRow)
 
         # Round up thread count to a multiple of block count
         if (threadsNeeded % self.blocksPerGrid) :
@@ -103,16 +150,18 @@ class BoardState:
 
         return
 
+
     def cellState(self, row, col):
-        return False if self.cells[(row+1) * (self.cols+2) + (col+1)] == 0 else True
+        (index, bit) = self.cellIndex(row, col)
+        return False if (self.cells[index] & (1 << bit)) == 0 else True
 
     def addCell(self, row, col):
-        self.cells[(row+1) * (self.cols+2) + (col+1)] = 1
-        return
+        (index, bit) = self.cellIndex(row, col)
+        self.cells[index] |= (1 << bit)
 
     def killCell(self, row, col):
-        self.cells[(row+1) * (self.cols+2) + (col+1)] = 0
-        return
+        (index, bit) = self.cellIndex(row, col)
+        self.cells[index] &= ~(1 << bit)
 
     def toString(self):
         boardString = ""
@@ -147,6 +196,45 @@ class BoardStateTests(unittest.TestCase):
                 "----\n" +
                 "----\n" +
                 "----")
+
+    def testAddCellAddsACell(self):
+        rows = 3
+        cols = 4
+        boardState = BoardState(rows=rows, cols=cols)
+
+        self.assertEqual(boardState.toString(),
+                "----\n" +
+                "----\n" +
+                "----")
+
+        boardState.addCell(0,0)
+
+        self.assertEqual(boardState.toString(),
+                "X---\n" +
+                "----\n" +
+                "----")
+
+        boardState.addCell(1,1)
+
+        self.assertEqual(boardState.toString(),
+                "X---\n" +
+                "-X--\n" +
+                "----")
+
+    def testKillCellKillsACell(self):
+
+        boardState = BoardState.fromString(
+                "XX-\n" +
+                "XX-\n" +
+                "---")
+
+        boardState.killCell(1,1)
+
+        self.assertEqual(boardState.toString(),
+                "XX-\n" +
+                "X--\n" +
+                "---")
+
 
     def testUpdateKillsCellsWithNoNeighbors(self):
         boardState = BoardState(rows=3, cols=3)
@@ -208,6 +296,20 @@ class BoardStateTests(unittest.TestCase):
                 "XXX\n" +
                 "X-X\n" +
                 "XXX")
+
+    def testCellIndexReturnsCorrectValues(self):
+
+        boardState = BoardState.fromString(
+                "XXX\n" +
+                "---\n" +
+                "---")
+
+        self.assertEqual(boardState.cellIndex(0,0), (4,0))
+        self.assertEqual(boardState.cellIndex(1,0), (7,0))
+        self.assertEqual(boardState.cellIndex(2,0), (10,0))
+        self.assertEqual(boardState.cellIndex(0,1), (4,1))
+        self.assertEqual(boardState.cellIndex(0,2), (4,2))
+        self.assertEqual(boardState.cellIndex(0,3), (4,3))
 
 
 if __name__ == '__main__':
