@@ -5,21 +5,26 @@ import numpy
 
 class BoardState:
 
-    @cuda.jit('void(int32[:],int32[:],int32,int32,int32)')
-    def updateCell(newCells, cells, numRows, numCols,loopsPerThread):
+    def cellColors(self):
+        return self.cellColors
+
+
+    @cuda.jit('void(int32[:],int32[:],float32[:],int32,int32,int32)')
+    def updateCell(newCells, cells, cellColors, numRows, numCols, loopsPerThread):
 
         index = cuda.grid(1)
 
         for x in range (index * loopsPerThread, index * loopsPerThread + loopsPerThread):
 
+            if x >= numRows * numCols:
+                return
+
             row = int(x / numCols)
             col = int(x % numCols)
 
-            if row > numRows:
-                return
 
 
-            cellArrayPos = row * (numCols + 2) + (col + 1)
+            cellArrayPos = (row + 1) * (numCols + 2) + (col + 1)
 
             realNumCols = numCols + 2
 
@@ -42,9 +47,18 @@ class BoardState:
             else:
                 newCells[cellArrayPos] = cells[cellArrayPos]
 
+            cellColorPos = 3 * 4 * x
+
+            if newCells[cellArrayPos]:
+                for corner in range(0, 4):
+                    cellColors[cellColorPos + corner * 3 + 2] = 1.0
+            else:
+                for corner in range(0, 4):
+                    cellColors[cellColorPos + corner * 3 + 2] = 0.0
+
     def update(self):
 
-        BoardState.updateCell[self.threadsPerBlock, self.blocksPerGrid](self.newCells, self.cells, self.rows, self.cols, self.loopsPerThread)
+        BoardState.updateCell[self.threadsPerBlock, self.blocksPerGrid](self.newCells, self.cells, self.cellColors, self.rows, self.cols, self.loopsPerThread)
         cuda.synchronize()
 
         cells = self.cells
@@ -57,6 +71,7 @@ class BoardState:
         self.cols = cols
         self.cells = numpy.zeros((rows+2) * (cols+2),dtype=numpy.int32)
         self.newCells = numpy.zeros((rows+2) * (cols+2),dtype=numpy.int32)
+        self.cellColors = numpy.zeros(3 * 4 * self.cols * self.rows, dtype=numpy.float32)
 
         self.blocksPerGrid = int(1024)
         self.loopsPerThread = 8
