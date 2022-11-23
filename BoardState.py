@@ -17,8 +17,11 @@ class BoardObserver(ABC):
 
 class BoardState:
 
-    def cellColors(self):
-        return self.cellColors
+    def glCellCornerVertexColors(self):
+        return self.glCellColors
+    
+    def glCellCornerVertices(self):
+        return self.glCellCorners
 
     def update(self, strategy):
 
@@ -41,7 +44,26 @@ class BoardState:
         self.cols = cols
         self.cells = numpy.zeros((rows+2) * (cols+2),dtype=numpy.int32)
         self.newCells = numpy.zeros((rows+2) * (cols+2),dtype=numpy.int32)
-        self.cellColors = numpy.zeros(3 * 4 * self.cols * self.rows, dtype=numpy.float32)
+        self.glCellColors = numpy.zeros(3 * 4 * self.cols * self.rows, dtype=numpy.float32)
+        self.glCellCorners = numpy.zeros(2 * 4 * self.cols * self.rows, dtype=numpy.float32)
+
+        width = 1.0 / self.cols
+        height = 1.0 / self.rows
+
+        for row in range(0, self.rows):
+          for col in range(0, self.cols):
+            x = row * width
+            y = col * height
+            cell = (row * self.cols + col) * 8
+
+            self.glCellCorners[cell + 0] = x
+            self.glCellCorners[cell + 1] = y
+            self.glCellCorners[cell + 2] = x
+            self.glCellCorners[cell + 3] = y + height
+            self.glCellCorners[cell + 4] = x + width
+            self.glCellCorners[cell + 5] = y + height
+            self.glCellCorners[cell + 6] = x + width
+            self.glCellCorners[cell + 7] = y
 
     def fromString(string):
 

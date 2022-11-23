@@ -20,7 +20,7 @@ class CudaUpdateStrategy(UpdateStrategy):
     threadsPerBlock = int(threadsNeeded / blocksPerGrid)
 
     self.updateCell[threadsPerBlock, blocksPerGrid](
-        boardState.newCells, boardState.cells, boardState.cellColors, boardState.rows, 
+        boardState.newCells, boardState.cells, boardState.glCellCornerVertexColors(), boardState.rows, 
         boardState.cols, loopsPerThread)
 
     cuda.synchronize()

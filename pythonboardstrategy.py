@@ -6,7 +6,7 @@ class StraightPythonUpdateStrategy(UpdateStrategy):
 
   def update(self, boardState):
 
-    self.updateCells(boardState.newCells, boardState.cells, boardState.cellColors,
+    self.updateCells(boardState.newCells, boardState.cells, boardState.glCellCornerVertexColors(),
         boardState.rows, boardState.cols)
 
   def updateCells(self, newCells, cells, cellColors, maxRows, maxCols):
