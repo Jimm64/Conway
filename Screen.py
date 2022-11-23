@@ -11,10 +11,10 @@ NANOS_PER_SECOND = 1000000000
 class GlScreen:
 
 
-    def loop(self):
+    def loop(self, strategy):
         while True:
             glutMainLoopEvent()
-            self.boardState.update()
+            self.boardState.update(strategy)
             self.drawScreen()
             self.updateCount += 1
 

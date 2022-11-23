@@ -2,66 +2,131 @@ from numba import jit, cuda
 import random
 import unittest
 import numpy
+from abc import ABC, abstractmethod
+
+class UpdateStrategy(ABC):
+
+  @abstractmethod
+  def update(self, boardState):
+      pass
+
+class StraightPythonUpdateStrategy(UpdateStrategy):
+
+  def update(self, boardState):
+
+        self.updateCells(boardState.newCells, boardState.cells, boardState.cellColors,
+            boardState.rows, boardState.cols)
+
+        newCells = boardState.newCells
+        boardState.newCells = boardState.cells
+        boardState.cells = newCells
+
+  def updateCells(self, newCells, cells, cellColors, maxRows, maxCols):
+
+    realNumCols = maxCols + 2
+
+    for x in range (maxCols * maxRows):
+
+        cellArrayPos = (x // maxCols + 1) * (maxCols + 2) + (x % maxCols + 1)
+
+        # Count neighbors.
+        neighborCount  = cells[cellArrayPos - realNumCols - 1] & 1
+        neighborCount += cells[cellArrayPos - realNumCols + 0] & 1
+        neighborCount += cells[cellArrayPos - realNumCols + 1] & 1
+
+        neighborCount += cells[cellArrayPos - 1] & 1
+        neighborCount += cells[cellArrayPos + 1] & 1
+
+        neighborCount += cells[cellArrayPos + realNumCols - 1] & 1
+        neighborCount += cells[cellArrayPos + realNumCols + 0] & 1
+        neighborCount += cells[cellArrayPos + realNumCols + 1] & 1
+
+        # Set whether the cell is alive or dead based on
+        # neighbor count and current state.
+        cellColor = 0.0
+        if neighborCount < 2 or neighborCount > 3:
+            newCells[cellArrayPos] = 0
+        elif neighborCount == 3:
+            newCells[cellArrayPos] = 1
+            cellColor = 1.0
+        else:
+            newCells[cellArrayPos] = cells[cellArrayPos]
+            if newCells[cellArrayPos] == 1:
+              cellColor = 1.0
+
+        # Likewise set what color the cell should now be.
+        cellColorPos = 3 * 4 * x
+        for corner in range(0, 4):
+          cellColors[cellColorPos + corner * 3 + 2] = cellColor
+
+class CudaUpdateStrategy(UpdateStrategy):
+
+  def update(self, boardState):
+
+    self.updateCell[boardState.threadsPerBlock, boardState.blocksPerGrid](
+        boardState.newCells, boardState.cells, boardState.cellColors, boardState.rows, 
+        boardState.cols, boardState.loopsPerThread)
+
+    cuda.synchronize()
+
+    cells = boardState.cells
+    boardState.cells = boardState.newCells
+    boardState.newCells = cells
+
+  @cuda.jit('void(int32[:],int32[:],float32[:],int32,int32,int32)')
+  def updateCell(newCells, cells, cellColors, numRows, numCols, loopsPerThread):
+
+      # The cells reprsent a two-dimensional board, but are passed in as
+      # a one-dimensional array. Determine which cells this thread
+      # is responsible for updating.
+      index = cuda.grid(1)
+      maxIndex = index * loopsPerThread + loopsPerThread
+      if maxIndex >= numRows * numCols:
+          maxIndex = numRows * numCols
+      realNumCols = numCols + 2
+
+      for x in range (index * loopsPerThread, maxIndex):
+
+          cellArrayPos = (x // numCols + 1) * (numCols + 2) + (x % numCols + 1)
+
+          # Count neighbors.
+          neighborCount  = cells[cellArrayPos - realNumCols - 1] & 1
+          neighborCount += cells[cellArrayPos - realNumCols + 0] & 1
+          neighborCount += cells[cellArrayPos - realNumCols + 1] & 1
+
+          neighborCount += cells[cellArrayPos - 1] & 1
+          neighborCount += cells[cellArrayPos + 1] & 1
+
+          neighborCount += cells[cellArrayPos + realNumCols - 1] & 1
+          neighborCount += cells[cellArrayPos + realNumCols + 0] & 1
+          neighborCount += cells[cellArrayPos + realNumCols + 1] & 1
+
+          # Set whether the cell is alive or dead based on
+          # neighbor count and current state.
+          cellColor = 0.0
+          if neighborCount < 2 or neighborCount > 3:
+              newCells[cellArrayPos] = 0
+          elif neighborCount == 3:
+              newCells[cellArrayPos] = 1
+              cellColor = 1.0
+          else:
+              newCells[cellArrayPos] = cells[cellArrayPos]
+              if newCells[cellArrayPos] == 1:
+                cellColor = 1.0
+
+          # Likewise set what color the cell should now be.
+          cellColorPos = 3 * 4 * x
+          for corner in range(0, 4):
+            cellColors[cellColorPos + corner * 3 + 2] = cellColor
 
 class BoardState:
 
     def cellColors(self):
         return self.cellColors
 
+    def update(self, strategy):
 
-    @cuda.jit('void(int32[:],int32[:],float32[:],int32,int32,int32)')
-    def updateCell(newCells, cells, cellColors, numRows, numCols, loopsPerThread):
-
-
-        # The cells reprsent a two-dimensional board, but are passed in as
-        # a one-dimensional array. Determine which cells this thread
-        # is responsible for updating.
-        index = cuda.grid(1)
-        maxIndex = index * loopsPerThread + loopsPerThread
-        if maxIndex >= numRows * numCols:
-            maxIndex = numRows * numCols
-        realNumCols = numCols + 2
-
-        for x in range (index * loopsPerThread, maxIndex):
-
-            cellArrayPos = (x // numCols + 1) * (numCols + 2) + (x % numCols + 1)
-
-            # Count neighbors.
-            neighborCount  = cells[cellArrayPos - realNumCols - 1] & 1
-            neighborCount += cells[cellArrayPos - realNumCols + 0] & 1
-            neighborCount += cells[cellArrayPos - realNumCols + 1] & 1
-
-            neighborCount += cells[cellArrayPos - 1] & 1
-            neighborCount += cells[cellArrayPos + 1] & 1
-
-            neighborCount += cells[cellArrayPos + realNumCols - 1] & 1
-            neighborCount += cells[cellArrayPos + realNumCols + 0] & 1
-            neighborCount += cells[cellArrayPos + realNumCols + 1] & 1
-
-            # Set whether the cell is alive or dead based on
-            # neighbor count and current state.
-            if neighborCount < 2 or neighborCount > 3:
-                newCells[cellArrayPos] = 0
-                cellColor = 0.0
-            elif neighborCount == 3:
-                newCells[cellArrayPos] = 1
-                cellColor = 1.0
-            else:
-                newCells[cellArrayPos] = cells[cellArrayPos]
-
-            # Likewise set what color the cell should now be.
-            cellColorPos = 3 * 4 * x
-            for corner in range(0, 4):
-              cellColors[cellColorPos + corner * 3 + 2] = cellColor
-
-    def update(self):
-
-        BoardState.updateCell[self.threadsPerBlock, self.blocksPerGrid](self.newCells, self.cells, self.cellColors, self.rows, self.cols, self.loopsPerThread)
-        cuda.synchronize()
-
-        cells = self.cells
-        self.cells = self.newCells
-        self.newCells = cells
+        strategy.update(self)
 
     def __init__(self, rows, cols):
 
@@ -137,7 +202,7 @@ class BoardState:
         return boardString
 
 
-class BoardStateTests(unittest.TestCase):
+class BoardStateTests():
 
     def testBoardCanInitFromString(self):
         boardState = BoardState.fromString(
@@ -170,7 +235,7 @@ class BoardStateTests(unittest.TestCase):
                 "---\n" +
                 "---")
 
-        boardState.update()
+        boardState.update(strategy=self.strategy)
 
         self.assertEqual(boardState.toString(),
                 "---\n" +
@@ -185,7 +250,7 @@ class BoardStateTests(unittest.TestCase):
                 "XX-\n" +
                 "---")
 
-        boardState.update()
+        boardState.update(strategy=self.strategy)
 
         self.assertEqual(boardState.toString(),
                 "XX-\n" +
@@ -201,7 +266,7 @@ class BoardStateTests(unittest.TestCase):
                 "---\n" +
                 "---")
 
-        boardState.update()
+        boardState.update(strategy=self.strategy)
 
         self.assertEqual(boardState.toString(),
                 "-X-\n" +
@@ -215,13 +280,22 @@ class BoardStateTests(unittest.TestCase):
                 "XXX\n" +
                 "-X-")
 
-        boardState.update()
+        boardState.update(strategy=self.strategy)
 
         self.assertEqual(boardState.toString(),
                 "XXX\n" +
                 "X-X\n" +
                 "XXX")
 
+class CudaStrategyUpdateTests(BoardStateTests, unittest.TestCase):
+
+    def setUp(self):
+        self.strategy=CudaUpdateStrategy()
+
+class StraightPythonStrategyUpdateTests(BoardStateTests, unittest.TestCase):
+
+    def setUp(self):
+        self.strategy=StraightPythonUpdateStrategy()
 
 if __name__ == '__main__':
     unittest.main()
