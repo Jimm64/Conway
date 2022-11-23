@@ -12,23 +12,21 @@ class BoardState:
     @cuda.jit('void(int32[:],int32[:],float32[:],int32,int32,int32)')
     def updateCell(newCells, cells, cellColors, numRows, numCols, loopsPerThread):
 
+
+        # The cells reprsent a two-dimensional board, but are passed in as
+        # a one-dimensional array. Determine which cells this thread
+        # is responsible for updating.
         index = cuda.grid(1)
+        maxIndex = index * loopsPerThread + loopsPerThread
+        if maxIndex >= numRows * numCols:
+            maxIndex = numRows * numCols
+        realNumCols = numCols + 2
 
-        for x in range (index * loopsPerThread, index * loopsPerThread + loopsPerThread):
+        for x in range (index * loopsPerThread, maxIndex):
 
-            if x >= numRows * numCols:
-                return
+            cellArrayPos = (x // numCols + 1) * (numCols + 2) + (x % numCols + 1)
 
-            row = int(x / numCols)
-            col = int(x % numCols)
-
-
-
-            cellArrayPos = (row + 1) * (numCols + 2) + (col + 1)
-
-            realNumCols = numCols + 2
-
-            # Count neighbors
+            # Count neighbors.
             neighborCount  = cells[cellArrayPos - realNumCols - 1] & 1
             neighborCount += cells[cellArrayPos - realNumCols + 0] & 1
             neighborCount += cells[cellArrayPos - realNumCols + 1] & 1
@@ -40,21 +38,21 @@ class BoardState:
             neighborCount += cells[cellArrayPos + realNumCols + 0] & 1
             neighborCount += cells[cellArrayPos + realNumCols + 1] & 1
 
+            # Set whether the cell is alive or dead based on
+            # neighbor count and current state.
             if neighborCount < 2 or neighborCount > 3:
                 newCells[cellArrayPos] = 0
+                cellColor = 0.0
             elif neighborCount == 3:
                 newCells[cellArrayPos] = 1
+                cellColor = 1.0
             else:
                 newCells[cellArrayPos] = cells[cellArrayPos]
 
+            # Likewise set what color the cell should now be.
             cellColorPos = 3 * 4 * x
-
-            if newCells[cellArrayPos]:
-                for corner in range(0, 4):
-                    cellColors[cellColorPos + corner * 3 + 2] = 1.0
-            else:
-                for corner in range(0, 4):
-                    cellColors[cellColorPos + corner * 3 + 2] = 0.0
+            for corner in range(0, 4):
+              cellColors[cellColorPos + corner * 3 + 2] = cellColor
 
     def update(self):
 
