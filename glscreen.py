@@ -1,8 +1,8 @@
-from BoardState import BoardObserver
+from boardstate import BoardObserver
 from OpenGL.GL import *
 from OpenGL.GLUT import *
 from OpenGL.GLU import *
-from Screen import GameScreen
+from screen import GameScreen
 import numpy
 
 class OpenGLScreen(GameScreen, BoardObserver):

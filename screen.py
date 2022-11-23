@@ -2,8 +2,6 @@ from abc import ABC, abstractmethod
 import numpy
 import time
 
-import BoardState
-
 class GameScreen(ABC):
 
   @abstractmethod

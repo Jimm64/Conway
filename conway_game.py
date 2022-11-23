@@ -1,6 +1,5 @@
+from boardstate import BoardState
 import argparse
-import BoardState
-import Screen
 import sys
 import time
 
@@ -14,7 +13,7 @@ arg_parser.add_argument("--cuda", action="store_true", dest="use_cuda_strategy",
 arg_parser.add_argument("--display-as-text", action="store_true", dest="use_text_display", required=False, default=False, help="Display board as text instead of using OpenGL.")
 args = arg_parser.parse_args()
 
-boardState = BoardState.BoardState(*args.cell_dimensions)
+boardState = BoardState(*args.cell_dimensions)
 boardState.randomizeState()
 
 if args.use_text_display:

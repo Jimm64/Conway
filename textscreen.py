@@ -1,5 +1,5 @@
-from BoardState import BoardObserver
-from Screen import GameScreen
+from boardstate import BoardObserver
+from screen import GameScreen
 import time
 
 class TextScreen(GameScreen, BoardObserver):

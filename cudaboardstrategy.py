@@ -1,6 +1,6 @@
 from numba import jit, cuda
-from BoardState import UpdateStrategy
-from BoardState import BoardStateTests
+from boardstate import UpdateStrategy
+from boardstate import BoardStateTests
 import unittest
 
 class CudaUpdateStrategy(UpdateStrategy):
