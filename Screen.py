@@ -1,3 +1,4 @@
+from abc import ABC, abstractmethod
 from OpenGL.GL import *
 from OpenGL.GLUT import *
 from OpenGL.GLU import *
@@ -8,7 +9,29 @@ import BoardState
 
 NANOS_PER_SECOND = 1000000000
 
-class GlScreen:
+class GameScreen(ABC):
+
+  @abstractmethod
+  def __init__(self, boardState, width, height):
+    pass
+
+  @abstractmethod
+  def loop(self, strategy):
+    pass
+
+class TextScreen(GameScreen):
+
+    def __init__(self, boardState, width, height):
+      self.boardState = boardState
+      pass
+
+    def loop(self, strategy):
+      while True:
+        print(self.boardState.toString() + "\n")
+        self.boardState.update(strategy)
+        time.sleep(0.1)
+
+class OpenGLScreen:
 
 
     def loop(self, strategy):
