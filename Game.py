@@ -15,14 +15,18 @@ boardState = BoardState.BoardState(*args.cell_dimensions)
 boardState.randomizeState()
 
 if args.use_text_display:
-  screen = Screen.TextScreen(boardState, *args.screen_dimensions)
+  from textscreen import TextScreen
+  screen = TextScreen(boardState, *args.screen_dimensions)
 else:
-  screen = Screen.OpenGLScreen(boardState, *args.screen_dimensions)
+  from glscreen import OpenGLScreen
+  screen = OpenGLScreen(boardState, *args.screen_dimensions)
 
 if args.use_cuda_strategy:
-  update_strategy = BoardState.CudaUpdateStrategy()
+  from cudaboardstrategy import CudaUpdateStrategy
+  update_strategy = CudaUpdateStrategy()
 else:
-  update_strategy = BoardState.StraightPythonUpdateStrategy()
+  from pythonboardstrategy import StraightPythonUpdateStrategy
+  update_strategy = StraightPythonUpdateStrategy()
 
 screen.loop(update_strategy)
 
