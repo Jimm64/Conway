@@ -14,12 +14,8 @@ class StraightPythonUpdateStrategy(UpdateStrategy):
 
   def update(self, boardState):
 
-        self.updateCells(boardState.newCells, boardState.cells, boardState.cellColors,
-            boardState.rows, boardState.cols)
-
-        newCells = boardState.newCells
-        boardState.newCells = boardState.cells
-        boardState.cells = newCells
+    self.updateCells(boardState.newCells, boardState.cells, boardState.cellColors,
+        boardState.rows, boardState.cols)
 
   def updateCells(self, newCells, cells, cellColors, maxRows, maxCols):
 
@@ -63,15 +59,23 @@ class CudaUpdateStrategy(UpdateStrategy):
 
   def update(self, boardState):
 
-    self.updateCell[boardState.threadsPerBlock, boardState.blocksPerGrid](
+    blocksPerGrid = int(1024)
+    loopsPerThread = 8
+
+    # Need enough threads to operate on the whole board
+    threadsNeeded = 1 + int(boardState.rows * boardState.cols / loopsPerThread)
+
+    # Round up thread count to a multiple of block count
+    if (threadsNeeded % blocksPerGrid) :
+        threadsNeeded += int(blocksPerGrid - threadsNeeded % blocksPerGrid)
+
+    threadsPerBlock = int(threadsNeeded / blocksPerGrid)
+
+    self.updateCell[threadsPerBlock, blocksPerGrid](
         boardState.newCells, boardState.cells, boardState.cellColors, boardState.rows, 
-        boardState.cols, boardState.loopsPerThread)
+        boardState.cols, loopsPerThread)
 
     cuda.synchronize()
-
-    cells = boardState.cells
-    boardState.cells = boardState.newCells
-    boardState.newCells = cells
 
   @cuda.jit('void(int32[:],int32[:],float32[:],int32,int32,int32)')
   def updateCell(newCells, cells, cellColors, numRows, numCols, loopsPerThread):
@@ -128,6 +132,10 @@ class BoardState:
 
         strategy.update(self)
 
+        cells = self.cells
+        self.cells = self.newCells
+        self.newCells = cells
+
     def __init__(self, rows, cols):
 
         self.rows = rows
@@ -135,19 +143,6 @@ class BoardState:
         self.cells = numpy.zeros((rows+2) * (cols+2),dtype=numpy.int32)
         self.newCells = numpy.zeros((rows+2) * (cols+2),dtype=numpy.int32)
         self.cellColors = numpy.zeros(3 * 4 * self.cols * self.rows, dtype=numpy.float32)
-
-        self.blocksPerGrid = int(1024)
-        self.loopsPerThread = 8
-
-        # Need enough threads to operate on the whole board
-        threadsNeeded = 1 + int(rows * cols / self.loopsPerThread)
-
-        # Round up thread count to a multiple of block count
-        if (threadsNeeded % self.blocksPerGrid) :
-            threadsNeeded += int(self.blocksPerGrid - threadsNeeded % self.blocksPerGrid)
-
-        self.threadsPerBlock = int(threadsNeeded / self.blocksPerGrid)
-
 
     def fromString(string):
 
