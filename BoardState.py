@@ -26,16 +26,16 @@ class StraightPythonUpdateStrategy(UpdateStrategy):
         cellArrayPos = (x // maxCols + 1) * (maxCols + 2) + (x % maxCols + 1)
 
         # Count neighbors.
-        neighborCount  = cells[cellArrayPos - realNumCols - 1] & 1
-        neighborCount += cells[cellArrayPos - realNumCols + 0] & 1
-        neighborCount += cells[cellArrayPos - realNumCols + 1] & 1
+        neighborCount  = cells[cellArrayPos - realNumCols - 1]
+        neighborCount += cells[cellArrayPos - realNumCols + 0]
+        neighborCount += cells[cellArrayPos - realNumCols + 1]
 
-        neighborCount += cells[cellArrayPos - 1] & 1
-        neighborCount += cells[cellArrayPos + 1] & 1
+        neighborCount += cells[cellArrayPos - 1]
+        neighborCount += cells[cellArrayPos + 1]
 
-        neighborCount += cells[cellArrayPos + realNumCols - 1] & 1
-        neighborCount += cells[cellArrayPos + realNumCols + 0] & 1
-        neighborCount += cells[cellArrayPos + realNumCols + 1] & 1
+        neighborCount += cells[cellArrayPos + realNumCols - 1]
+        neighborCount += cells[cellArrayPos + realNumCols + 0]
+        neighborCount += cells[cellArrayPos + realNumCols + 1]
 
         # Set whether the cell is alive or dead based on
         # neighbor count and current state.
@@ -94,16 +94,16 @@ class CudaUpdateStrategy(UpdateStrategy):
           cellArrayPos = (x // numCols + 1) * (numCols + 2) + (x % numCols + 1)
 
           # Count neighbors.
-          neighborCount  = cells[cellArrayPos - realNumCols - 1] & 1
-          neighborCount += cells[cellArrayPos - realNumCols + 0] & 1
-          neighborCount += cells[cellArrayPos - realNumCols + 1] & 1
+          neighborCount  = cells[cellArrayPos - realNumCols - 1]
+          neighborCount += cells[cellArrayPos - realNumCols + 0]
+          neighborCount += cells[cellArrayPos - realNumCols + 1]
 
-          neighborCount += cells[cellArrayPos - 1] & 1
-          neighborCount += cells[cellArrayPos + 1] & 1
+          neighborCount += cells[cellArrayPos - 1]
+          neighborCount += cells[cellArrayPos + 1]
 
-          neighborCount += cells[cellArrayPos + realNumCols - 1] & 1
-          neighborCount += cells[cellArrayPos + realNumCols + 0] & 1
-          neighborCount += cells[cellArrayPos + realNumCols + 1] & 1
+          neighborCount += cells[cellArrayPos + realNumCols - 1]
+          neighborCount += cells[cellArrayPos + realNumCols + 0]
+          neighborCount += cells[cellArrayPos + realNumCols + 1]
 
           # Set whether the cell is alive or dead based on
           # neighbor count and current state.
