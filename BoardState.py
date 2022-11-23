@@ -9,6 +9,11 @@ class UpdateStrategy(ABC):
   def update(self, boardState):
       pass
 
+class BoardObserver(ABC):
+
+  @abstractmethod
+  def onUpdate(self, boardState):
+    pass
 
 class BoardState:
 
@@ -23,8 +28,15 @@ class BoardState:
         self.cells = self.newCells
         self.newCells = cells
 
+        for observer in self.observers:
+            observer.onUpdate(self)
+
+    def addObserver(self, observer):
+        self.observers.append(observer)
+
     def __init__(self, rows, cols):
 
+        self.observers = []
         self.rows = rows
         self.cols = cols
         self.cells = numpy.zeros((rows+2) * (cols+2),dtype=numpy.int32)

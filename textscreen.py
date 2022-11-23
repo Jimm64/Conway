@@ -1,14 +1,11 @@
+from BoardState import BoardObserver
 from Screen import GameScreen
 import time
 
-class TextScreen(GameScreen):
+class TextScreen(GameScreen, BoardObserver):
 
     def __init__(self, boardState, width, height):
-      self.boardState = boardState
       pass
 
-    def loop(self, strategy):
-      while True:
-        print(self.boardState.toString() + "\n")
-        self.boardState.update(strategy)
-        time.sleep(0.1)
+    def onUpdate(self, boardState):
+      print(boardState.toString() + "\n")

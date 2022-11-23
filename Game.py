@@ -2,6 +2,9 @@ import argparse
 import BoardState
 import Screen
 import sys
+import time
+
+NANOS_PER_SECOND = 1000000000
 
 arg_parser = argparse.ArgumentParser("Conway's Game of Life")
 
@@ -21,6 +24,8 @@ else:
   from glscreen import OpenGLScreen
   screen = OpenGLScreen(boardState, *args.screen_dimensions)
 
+boardState.addObserver(screen)
+
 if args.use_cuda_strategy:
   from cudaboardstrategy import CudaUpdateStrategy
   update_strategy = CudaUpdateStrategy()
@@ -28,5 +33,22 @@ else:
   from pythonboardstrategy import StraightPythonUpdateStrategy
   update_strategy = StraightPythonUpdateStrategy()
 
-screen.loop(update_strategy)
+startTime = time.time_ns()
+nextTickTime = startTime + NANOS_PER_SECOND
 
+updateCountAtLastPrint = 0
+updateCount = 0
+
+while True:
+  boardState.update(update_strategy)
+
+  updateCount += 1
+
+  currentTime = time.time_ns()
+
+  if currentTime >= nextTickTime:
+      print("Update rate:", (updateCount - updateCountAtLastPrint) 
+        / ((currentTime - startTime)/NANOS_PER_SECOND), "f/s")
+      nextTickTime += NANOS_PER_SECOND
+      startTime = currentTime
+      updateCountAtLastPrint = updateCount

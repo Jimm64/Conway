@@ -1,36 +1,21 @@
+from BoardState import BoardObserver
 from OpenGL.GL import *
 from OpenGL.GLUT import *
 from OpenGL.GLU import *
 from Screen import GameScreen
 import numpy
-import time
 
-NANOS_PER_SECOND = 1000000000
+class OpenGLScreen(GameScreen, BoardObserver):
 
-class OpenGLScreen:
+    def onUpdate(self, boardState):
 
+      if boardState is not self.boardState:
+        raise ValueError("Called to update a board other than the one we were created with.")
 
-    def loop(self, strategy):
-        while True:
-            glutMainLoopEvent()
-            self.boardState.update(strategy)
-            self.drawScreen()
-            self.updateCount += 1
-
-            currentTime = time.time_ns()
-
-            if currentTime >= self.nextTickTime:
-                print("Update rate:", (self.updateCount - self.updateCountAtLastPrint) / ((currentTime - self.startTime)/NANOS_PER_SECOND), "f/s")
-                self.nextTickTime += NANOS_PER_SECOND
-                self.startTime = currentTime
-                self.updateCountAtLastPrint = self.updateCount
+      glutMainLoopEvent()
+      self.drawScreen()
 
     def __init__(self, boardState, width, height):
-        self.startTime = time.time_ns()
-        self.nextTickTime = self.startTime + NANOS_PER_SECOND
-
-        self.updateCountAtLastPrint = 0
-        self.updateCount = 0
         self.displayWidth = width
         self.displayHeight = height
         self.boardState = boardState

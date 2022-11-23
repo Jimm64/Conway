@@ -10,7 +10,3 @@ class GameScreen(ABC):
   def __init__(self, boardState, width, height):
     pass
 
-  @abstractmethod
-  def loop(self, strategy):
-    pass
-
