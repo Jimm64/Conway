@@ -4,8 +4,8 @@ import time
 
 class TextScreen(GameScreen, BoardObserver):
 
-    def __init__(self, boardState, width, height):
+    def __init__(self, board_state, width, height):
       pass
 
-    def onUpdate(self, boardState):
-      print(boardState.toString() + "\n")
+    def on_update(self, board_state):
+      print(board_state.to_string() + "\n")

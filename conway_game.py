@@ -13,17 +13,17 @@ arg_parser.add_argument("--cuda", action="store_true", dest="use_cuda_strategy",
 arg_parser.add_argument("--display-as-text", action="store_true", dest="use_text_display", required=False, default=False, help="Display board as text instead of using OpenGL.")
 args = arg_parser.parse_args()
 
-boardState = BoardState(*args.cell_dimensions)
-boardState.randomizeState()
+board_state = BoardState(*args.cell_dimensions)
+board_state.randomize_state()
 
 if args.use_text_display:
   from textscreen import TextScreen
-  screen = TextScreen(boardState, *args.screen_dimensions)
+  screen = TextScreen(board_state, *args.screen_dimensions)
 else:
   from glscreen import OpenGLScreen
-  screen = OpenGLScreen(boardState, *args.screen_dimensions)
+  screen = OpenGLScreen(board_state, *args.screen_dimensions)
 
-boardState.addObserver(screen)
+board_state.add_observer(screen)
 
 if args.use_cuda_strategy:
   from cudaboardstrategy import CudaUpdateStrategy
@@ -32,22 +32,22 @@ else:
   from pythonboardstrategy import StraightPythonUpdateStrategy
   update_strategy = StraightPythonUpdateStrategy()
 
-startTime = time.time_ns()
-nextTickTime = startTime + NANOS_PER_SECOND
+start_time = time.time_ns()
+next_report_time = start_time + NANOS_PER_SECOND
 
-updateCountAtLastPrint = 0
-updateCount = 0
+update_count_at_last_report = 0
+update_count = 0
 
 while True:
-  boardState.update(update_strategy)
+  board_state.update(update_strategy)
 
-  updateCount += 1
+  update_count += 1
 
-  currentTime = time.time_ns()
+  current_time = time.time_ns()
 
-  if currentTime >= nextTickTime:
-      print("Update rate:", (updateCount - updateCountAtLastPrint) 
-        / ((currentTime - startTime)/NANOS_PER_SECOND), "f/s")
-      nextTickTime += NANOS_PER_SECOND
-      startTime = currentTime
-      updateCountAtLastPrint = updateCount
+  if current_time >= next_report_time:
+      print("Update rate:", (update_count - update_count_at_last_report) 
+        / ((current_time - start_time)/NANOS_PER_SECOND), "f/s")
+      next_report_time += NANOS_PER_SECOND
+      start_time = current_time
+      update_count_at_last_report = update_count

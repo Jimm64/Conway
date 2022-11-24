@@ -6,35 +6,35 @@ from abc import ABC, abstractmethod
 class UpdateStrategy(ABC):
 
   @abstractmethod
-  def update(self, boardState):
+  def update(self, board_state):
       pass
 
 class BoardObserver(ABC):
 
   @abstractmethod
-  def onUpdate(self, boardState):
+  def on_update(self, board_state):
     pass
 
 class BoardState:
 
-    def glCellCornerVertexColors(self):
-        return self.glCellColors
+    def get_opengl_cell_vertex_colors(self):
+        return self.opengl_cell_colors
     
-    def glCellCornerVertices(self):
-        return self.glCellCorners
+    def get_opengl_cell_corner_vertices(self):
+        return self.opengl_cell_corners
 
     def update(self, strategy):
 
         strategy.update(self)
 
         cells = self.cells
-        self.cells = self.newCells
-        self.newCells = cells
+        self.cells = self.new_cells
+        self.new_cells = cells
 
         for observer in self.observers:
-            observer.onUpdate(self)
+            observer.on_update(self)
 
-    def addObserver(self, observer):
+    def add_observer(self, observer):
         self.observers.append(observer)
 
     def __init__(self, rows, cols):
@@ -43,9 +43,9 @@ class BoardState:
         self.rows = rows
         self.cols = cols
         self.cells = numpy.zeros((rows+2) * (cols+2),dtype=numpy.int32)
-        self.newCells = numpy.zeros((rows+2) * (cols+2),dtype=numpy.int32)
-        self.glCellColors = numpy.zeros(3 * 4 * self.cols * self.rows, dtype=numpy.float32)
-        self.glCellCorners = numpy.zeros(2 * 4 * self.cols * self.rows, dtype=numpy.float32)
+        self.new_cells = numpy.zeros((rows+2) * (cols+2),dtype=numpy.int32)
+        self.opengl_cell_colors = numpy.zeros(3 * 4 * self.cols * self.rows, dtype=numpy.float32)
+        self.opengl_cell_corners = numpy.zeros(2 * 4 * self.cols * self.rows, dtype=numpy.float32)
 
         width = 1.0 / self.cols
         height = 1.0 / self.rows
@@ -56,149 +56,149 @@ class BoardState:
             y = col * height
             cell = (row * self.cols + col) * 8
 
-            self.glCellCorners[cell + 0] = x
-            self.glCellCorners[cell + 1] = y
-            self.glCellCorners[cell + 2] = x
-            self.glCellCorners[cell + 3] = y + height
-            self.glCellCorners[cell + 4] = x + width
-            self.glCellCorners[cell + 5] = y + height
-            self.glCellCorners[cell + 6] = x + width
-            self.glCellCorners[cell + 7] = y
+            self.opengl_cell_corners[cell + 0] = x
+            self.opengl_cell_corners[cell + 1] = y
+            self.opengl_cell_corners[cell + 2] = x
+            self.opengl_cell_corners[cell + 3] = y + height
+            self.opengl_cell_corners[cell + 4] = x + width
+            self.opengl_cell_corners[cell + 5] = y + height
+            self.opengl_cell_corners[cell + 6] = x + width
+            self.opengl_cell_corners[cell + 7] = y
 
-    def fromString(string):
+    def from_string(string):
 
-        rowStrings = string.split("\n")
-        rows = len(rowStrings)
-        cols = len(rowStrings[0])
+        row_strings = string.split("\n")
+        rows = len(row_strings)
+        cols = len(row_strings[0])
 
         for row in range(0, rows):
-            if len(rowStrings[row]) != cols:
+            if len(row_strings[row]) != cols:
                 raise Exception("Row lengths are not equal")
         
-        boardState = BoardState(rows, cols)
+        board_state = BoardState(rows, cols)
 
         for row in range(0, rows):
             for col in range (0, cols):
-                if rowStrings[row][col] == "X":
-                    boardState.addCell(row, col)
-                elif rowStrings[row][col] != "-":
+                if row_strings[row][col] == "X":
+                    board_state.set_cell(row, col)
+                elif row_strings[row][col] != "-":
                     raise Exception("Unrecognized character in board string")
 
-        return boardState
+        return board_state
 
 
-    def randomizeState(self):
+    def randomize_state(self):
         for row in range(0, self.rows):
             for col in range (0, self.cols):
                 if random.randint(0,1):
-                    self.addCell(row, col)
+                    self.set_cell(row, col)
                 else:
-                    self.killCell(row, col)
+                    self.clear_cell(row, col)
 
         return
 
     def cellState(self, row, col):
         return False if self.cells[(row+1) * (self.cols+2) + (col+1)] == 0 else True
 
-    def addCell(self, row, col):
+    def set_cell(self, row, col):
         self.cells[(row+1) * (self.cols+2) + (col+1)] = 1
         return
 
-    def killCell(self, row, col):
+    def clear_cell(self, row, col):
         self.cells[(row+1) * (self.cols+2) + (col+1)] = 0
         return
 
-    def toString(self):
-        boardString = ""
+    def to_string(self):
+        board_string = ""
         for row in range(0, self.rows):
             for col in range(0, self.cols):
-                boardString += "X" if self.cellState(row, col) else "-"
+                board_string += "X" if self.cellState(row, col) else "-"
             if row < self.rows - 1:
-                boardString += "\n" 
-        return boardString
+                board_string += "\n" 
+        return board_string
 
 
 class BoardStateTests():
 
-    def testBoardCanInitFromString(self):
-        boardState = BoardState.fromString(
+    def test_board_can_init_from_string(self):
+        board_state = BoardState.from_string(
                 "X-X\n" +
                 "-X-\n" +
                 "X-X")
 
-        self.assertEqual(boardState.toString(),
+        self.assertEqual(board_state.to_string(),
                 "X-X\n" +
                 "-X-\n" +
                 "X-X")
 
 
-    def testAllCellsAreFalseAtStart(self):
+    def test_all_cells_are_false_at_start(self):
         rows = 3
         cols = 4
-        boardState = BoardState(rows=rows, cols=cols)
+        board_state = BoardState(rows=rows, cols=cols)
 
-        self.assertEqual(boardState.toString(),
+        self.assertEqual(board_state.to_string(),
                 "----\n" +
                 "----\n" +
                 "----")
 
-    def testUpdateKillsCellsWithNoNeighbors(self):
-        boardState = BoardState(rows=3, cols=3)
-        boardState.addCell(0, 0)
+    def test_update_kills_cell_with_no_neighbors(self):
+        board_state = BoardState(rows=3, cols=3)
+        board_state.set_cell(0, 0)
 
-        self.assertEqual(boardState.toString(),
+        self.assertEqual(board_state.to_string(),
                 "X--\n" +
                 "---\n" +
                 "---")
 
-        boardState.update(strategy=self.strategy)
+        board_state.update(strategy=self.strategy)
 
-        self.assertEqual(boardState.toString(),
+        self.assertEqual(board_state.to_string(),
                 "---\n" +
                 "---\n" +
                 "---")
 
 
-    def testUpdateKeepsAliveCellsWithThreeNeighbors(self):
+    def test_update_keeps_alive_cell_with_three_neighbors(self):
 
-        boardState = BoardState.fromString(
+        board_state = BoardState.from_string(
                 "XX-\n" +
                 "XX-\n" +
                 "---")
 
-        boardState.update(strategy=self.strategy)
+        board_state.update(strategy=self.strategy)
 
-        self.assertEqual(boardState.toString(),
+        self.assertEqual(board_state.to_string(),
                 "XX-\n" +
                 "XX-\n" +
                 "---")
 
 
 
-    def testUpdateCreatesCellIfItHasThreeNeighbors(self):
+    def test_update_sets_cell_with_three_neighbors(self):
 
-        boardState = BoardState.fromString(
+        board_state = BoardState.from_string(
                 "XXX\n" +
                 "---\n" +
                 "---")
 
-        boardState.update(strategy=self.strategy)
+        board_state.update(strategy=self.strategy)
 
-        self.assertEqual(boardState.toString(),
+        self.assertEqual(board_state.to_string(),
                 "-X-\n" +
                 "-X-\n" +
                 "---")
 
-    def testUpdateKillsCellWithFourNeighbors(self):
+    def test_update_kills_cell_with_four_neighbors(self):
 
-        boardState = BoardState.fromString(
+        board_state = BoardState.from_string(
                 "-X-\n" +
                 "XXX\n" +
                 "-X-")
 
-        boardState.update(strategy=self.strategy)
+        board_state.update(strategy=self.strategy)
 
-        self.assertEqual(boardState.toString(),
+        self.assertEqual(board_state.to_string(),
                 "XXX\n" +
                 "X-X\n" +
                 "XXX")

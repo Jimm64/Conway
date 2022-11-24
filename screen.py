@@ -5,6 +5,6 @@ import time
 class GameScreen(ABC):
 
   @abstractmethod
-  def __init__(self, boardState, width, height):
+  def __init__(self, board_state, width, height):
     pass
 

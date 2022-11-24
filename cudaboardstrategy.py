@@ -5,71 +5,74 @@ import unittest
 
 class CudaUpdateStrategy(UpdateStrategy):
 
-  def update(self, boardState):
+  def update(self, board_state):
 
-    blocksPerGrid = int(1024)
-    loopsPerThread = 8
+    blocks_per_grid = int(1024)
+    loops_per_thread = 8
 
     # Need enough threads to operate on the whole board
-    threadsNeeded = 1 + int(boardState.rows * boardState.cols / loopsPerThread)
+    threads_needed = 1 + int(board_state.rows * board_state.cols / loops_per_thread)
 
     # Round up thread count to a multiple of block count
-    if (threadsNeeded % blocksPerGrid) :
-        threadsNeeded += int(blocksPerGrid - threadsNeeded % blocksPerGrid)
+    if (threads_needed % blocks_per_grid) :
+        threads_needed += int(blocks_per_grid - threads_needed % blocks_per_grid)
 
-    threadsPerBlock = int(threadsNeeded / blocksPerGrid)
+    threads_per_block = int(threads_needed / blocks_per_grid)
 
-    self.updateCell[threadsPerBlock, blocksPerGrid](
-        boardState.newCells, boardState.cells, boardState.glCellCornerVertexColors(), boardState.rows, 
-        boardState.cols, loopsPerThread)
+    self.update_cell[threads_per_block, blocks_per_grid](
+        board_state.new_cells, board_state.cells, board_state.get_opengl_cell_vertex_colors(), board_state.rows, 
+        board_state.cols, loops_per_thread)
 
     cuda.synchronize()
 
   @cuda.jit('void(int32[:],int32[:],float32[:],int32,int32,int32)')
-  def updateCell(newCells, cells, cellColors, numRows, numCols, loopsPerThread):
+  def update_cell(new_cells, cells, cell_colors, num_rows, num_cols, loops_per_thread):
 
       # The cells reprsent a two-dimensional board, but are passed in as
       # a one-dimensional array. Determine which cells this thread
       # is responsible for updating.
       index = cuda.grid(1)
-      maxIndex = index * loopsPerThread + loopsPerThread
-      if maxIndex >= numRows * numCols:
-          maxIndex = numRows * numCols
-      realNumCols = numCols + 2
+      max_index = index * loops_per_thread + loops_per_thread
+      if max_index >= num_rows * num_cols:
+          max_index = num_rows * num_cols
 
-      for x in range (index * loopsPerThread, maxIndex):
+      # Each row also includes two border cells. Account for them
+      # when determining a given cell's index.
+      size_of_row = num_cols + 2
 
-          cellArrayPos = (x // numCols + 1) * (numCols + 2) + (x % numCols + 1)
+      for x in range (index * loops_per_thread, max_index):
+
+          cell_array_index = (x // num_cols + 1) * (num_cols + 2) + (x % num_cols + 1)
 
           # Count neighbors.
-          neighborCount  = cells[cellArrayPos - realNumCols - 1]
-          neighborCount += cells[cellArrayPos - realNumCols + 0]
-          neighborCount += cells[cellArrayPos - realNumCols + 1]
+          cell_neighbor_count  = cells[cell_array_index - size_of_row - 1]
+          cell_neighbor_count += cells[cell_array_index - size_of_row + 0]
+          cell_neighbor_count += cells[cell_array_index - size_of_row + 1]
 
-          neighborCount += cells[cellArrayPos - 1]
-          neighborCount += cells[cellArrayPos + 1]
+          cell_neighbor_count += cells[cell_array_index - 1]
+          cell_neighbor_count += cells[cell_array_index + 1]
 
-          neighborCount += cells[cellArrayPos + realNumCols - 1]
-          neighborCount += cells[cellArrayPos + realNumCols + 0]
-          neighborCount += cells[cellArrayPos + realNumCols + 1]
+          cell_neighbor_count += cells[cell_array_index + size_of_row - 1]
+          cell_neighbor_count += cells[cell_array_index + size_of_row + 0]
+          cell_neighbor_count += cells[cell_array_index + size_of_row + 1]
 
           # Set whether the cell is alive or dead based on
           # neighbor count and current state.
-          cellColor = 0.0
-          if neighborCount < 2 or neighborCount > 3:
-              newCells[cellArrayPos] = 0
-          elif neighborCount == 3:
-              newCells[cellArrayPos] = 1
-              cellColor = 1.0
+          cell_color = 0.0
+          if cell_neighbor_count < 2 or cell_neighbor_count > 3:
+              new_cells[cell_array_index] = 0
+          elif cell_neighbor_count == 3:
+              new_cells[cell_array_index] = 1
+              cell_color = 1.0
           else:
-              newCells[cellArrayPos] = cells[cellArrayPos]
-              if newCells[cellArrayPos] == 1:
-                cellColor = 1.0
+              new_cells[cell_array_index] = cells[cell_array_index]
+              if new_cells[cell_array_index] == 1:
+                cell_color = 1.0
 
           # Likewise set what color the cell should now be.
-          cellColorPos = 3 * 4 * x
+          cell_color_index = 3 * 4 * x
           for corner in range(0, 4):
-            cellColors[cellColorPos + corner * 3 + 2] = cellColor
+            cell_colors[cell_color_index + corner * 3 + 2] = cell_color
 
 class CudaStrategyUpdateTests(BoardStateTests, unittest.TestCase):
 
