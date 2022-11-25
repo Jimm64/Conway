@@ -1,11 +1,21 @@
 from numba import jit, cuda
 from boardstate import UpdateStrategy
 from boardstate import BoardStateTests
+import numpy
 import unittest
 
 class CudaUpdateStrategy(UpdateStrategy):
 
+  def __init__(self, opengl_draw_state=None):
+    self.opengl_draw_state = opengl_draw_state
+
+    # CUDA seems to want us to pass in something for the colors array
+    # even if we aren't using a display that has them.
+    self.empty_cell_color_array = numpy.zeros(0, dtype=numpy.float32)
+
   def update(self, board_state):
+    if self.opengl_draw_state:
+      self.opengl_draw_state.set_cell_dimensions(board_state.rows, board_state.cols)
 
     blocks_per_grid = int(1024)
     loops_per_thread = 8
@@ -19,9 +29,16 @@ class CudaUpdateStrategy(UpdateStrategy):
 
     threads_per_block = int(threads_needed / blocks_per_grid)
 
-    self.update_cell[threads_per_block, blocks_per_grid](
-        board_state.new_cells, board_state.cells, board_state.get_opengl_cell_vertex_colors(), board_state.rows, 
-        board_state.cols, loops_per_thread)
+    if self.opengl_draw_state:
+        self.update_cell[threads_per_block, blocks_per_grid](
+            board_state.new_cells, board_state.cells, 
+            self.opengl_draw_state.get_opengl_cell_vertex_colors(), board_state.rows, 
+            board_state.cols, loops_per_thread)
+    else:
+        self.update_cell[threads_per_block, blocks_per_grid](
+            board_state.new_cells, board_state.cells, 
+            self.empty_cell_color_array, board_state.rows, 
+            board_state.cols, loops_per_thread)
 
     cuda.synchronize()
 
@@ -58,21 +75,18 @@ class CudaUpdateStrategy(UpdateStrategy):
 
           # Set whether the cell is alive or dead based on
           # neighbor count and current state.
-          cell_color = 0.0
           if cell_neighbor_count < 2 or cell_neighbor_count > 3:
               new_cells[cell_array_index] = 0
           elif cell_neighbor_count == 3:
               new_cells[cell_array_index] = 1
-              cell_color = 1.0
           else:
               new_cells[cell_array_index] = cells[cell_array_index]
-              if new_cells[cell_array_index] == 1:
-                cell_color = 1.0
 
-          # Likewise set what color the cell should now be.
-          cell_color_index = 3 * 4 * x
-          for corner in range(0, 4):
-            cell_colors[cell_color_index + corner * 3 + 2] = cell_color
+          if len(cell_colors) > 0:
+            # Likewise set what color the cell should now be.
+            cell_color_index = 3 * 4 * x
+            for corner in range(0, 4):
+              cell_colors[cell_color_index + corner * 3 + 2] = new_cells[cell_array_index] 
 
 class CudaStrategyUpdateTests(BoardStateTests, unittest.TestCase):
 

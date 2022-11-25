@@ -4,13 +4,17 @@ import unittest
 
 class StraightPythonUpdateStrategy(UpdateStrategy):
 
+  def __init__(self, opengl_draw_state=None):
+    self.opengl_draw_state = opengl_draw_state
+
   def update(self, board_state):
 
+    if self.opengl_draw_state:
+      self.opengl_draw_state.set_cell_dimensions(board_state.rows, board_state.cols)
     self.update_cells(board_state.new_cells, board_state.cells, 
-        board_state.get_opengl_cell_vertex_colors(),
         board_state.rows, board_state.cols)
 
-  def update_cells(self, new_cells, cells, cell_colors, max_rows, max_cols):
+  def update_cells(self, new_cells, cells, max_rows, max_cols):
 
     size_of_row = max_cols + 2
 
@@ -32,21 +36,19 @@ class StraightPythonUpdateStrategy(UpdateStrategy):
 
         # Set whether the cell is alive or dead based on
         # neighbor count and current state.
-        cell_color = 0.0
         if cell_neighbor_count < 2 or cell_neighbor_count > 3:
             new_cells[cell_array_index] = 0
         elif cell_neighbor_count == 3:
             new_cells[cell_array_index] = 1
-            cell_color = 1.0
         else:
             new_cells[cell_array_index] = cells[cell_array_index]
-            if new_cells[cell_array_index] == 1:
-              cell_color = 1.0
 
-        # Likewise set what color the cell should now be.
-        cell_color_index = 3 * 4 * x
-        for corner in range(0, 4):
-          cell_colors[cell_color_index + corner * 3 + 2] = cell_color
+        if self.opengl_draw_state:
+            # Likewise set what color the cell should now be.
+            cell_color_index = 3 * 4 * x
+            for corner in range(0, 4):
+              self.opengl_draw_state.get_opengl_cell_vertex_colors()[
+                  cell_color_index + corner * 3 + 2] = new_cells[cell_array_index]
 
 
 class StraightPythonStrategyUpdateTests(BoardStateTests, unittest.TestCase):

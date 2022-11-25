@@ -17,12 +17,6 @@ class BoardObserver(ABC):
 
 class BoardState:
 
-    def get_opengl_cell_vertex_colors(self):
-        return self.opengl_cell_colors
-    
-    def get_opengl_cell_corner_vertices(self):
-        return self.opengl_cell_corners
-
     def update(self, strategy):
 
         strategy.update(self)
@@ -44,26 +38,6 @@ class BoardState:
         self.cols = cols
         self.cells = numpy.zeros((rows+2) * (cols+2),dtype=numpy.int32)
         self.new_cells = numpy.zeros((rows+2) * (cols+2),dtype=numpy.int32)
-        self.opengl_cell_colors = numpy.zeros(3 * 4 * self.cols * self.rows, dtype=numpy.float32)
-        self.opengl_cell_corners = numpy.zeros(2 * 4 * self.cols * self.rows, dtype=numpy.float32)
-
-        width = 1.0 / self.cols
-        height = 1.0 / self.rows
-
-        for row in range(0, self.rows):
-          for col in range(0, self.cols):
-            x = row * width
-            y = col * height
-            cell = (row * self.cols + col) * 8
-
-            self.opengl_cell_corners[cell + 0] = x
-            self.opengl_cell_corners[cell + 1] = y
-            self.opengl_cell_corners[cell + 2] = x
-            self.opengl_cell_corners[cell + 3] = y + height
-            self.opengl_cell_corners[cell + 4] = x + width
-            self.opengl_cell_corners[cell + 5] = y + height
-            self.opengl_cell_corners[cell + 6] = x + width
-            self.opengl_cell_corners[cell + 7] = y
 
     def from_string(string):
 

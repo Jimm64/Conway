@@ -19,25 +19,28 @@ print_stats = False
 board_state = BoardState(*args.cell_dimensions)
 board_state.randomize_state()
 
+opengl_draw_state = None
+
 if args.use_ansi_text_display:
   from textscreen import AnsiTextScreen
-  screen = AnsiTextScreen(board_state, *args.screen_dimensions)
+  screen = AnsiTextScreen(*args.screen_dimensions)
 elif args.use_text_display:
   from textscreen import TextScreen
-  screen = TextScreen(board_state, *args.screen_dimensions)
+  screen = TextScreen(*args.screen_dimensions)
 else:
   from glscreen import OpenGLScreen
   print_stats = True
-  screen = OpenGLScreen(board_state, *args.screen_dimensions)
+  screen = OpenGLScreen(*args.screen_dimensions)
+  opengl_draw_state = screen.get_opengl_draw_state()
 
 board_state.add_observer(screen)
 
 if args.use_cuda_strategy:
   from cudaboardstrategy import CudaUpdateStrategy
-  update_strategy = CudaUpdateStrategy()
+  update_strategy = CudaUpdateStrategy(opengl_draw_state=opengl_draw_state)
 else:
   from pythonboardstrategy import StraightPythonUpdateStrategy
-  update_strategy = StraightPythonUpdateStrategy()
+  update_strategy = StraightPythonUpdateStrategy(opengl_draw_state=opengl_draw_state)
 
 start_time = time.time_ns()
 next_report_time = start_time + NANOS_PER_SECOND
