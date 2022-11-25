@@ -11,16 +11,23 @@ arg_parser.add_argument("--cell-dimensions", dest="cell_dimensions", nargs=2, re
 arg_parser.add_argument("--screen-dimensions", dest="screen_dimensions", nargs=2, required=False, type=int, default=[400,400], help="Screen width and height")
 arg_parser.add_argument("--cuda", action="store_true", dest="use_cuda_strategy", required=False, default=False, help="Use CUDA to update board state.")
 arg_parser.add_argument("--display-as-text", action="store_true", dest="use_text_display", required=False, default=False, help="Display board as text instead of using OpenGL.")
+arg_parser.add_argument("--display-as-ansi-text", action="store_true", dest="use_ansi_text_display", required=False, default=False, help="Display board as text, using ANSI control characters.")
 args = arg_parser.parse_args()
+
+print_stats = False
 
 board_state = BoardState(*args.cell_dimensions)
 board_state.randomize_state()
 
-if args.use_text_display:
+if args.use_ansi_text_display:
+  from textscreen import AnsiTextScreen
+  screen = AnsiTextScreen(board_state, *args.screen_dimensions)
+elif args.use_text_display:
   from textscreen import TextScreen
   screen = TextScreen(board_state, *args.screen_dimensions)
 else:
   from glscreen import OpenGLScreen
+  print_stats = True
   screen = OpenGLScreen(board_state, *args.screen_dimensions)
 
 board_state.add_observer(screen)
@@ -45,7 +52,7 @@ while True:
 
   current_time = time.time_ns()
 
-  if current_time >= next_report_time:
+  if print_stats and current_time >= next_report_time:
       print("Update rate:", (update_count - update_count_at_last_report) 
         / ((current_time - start_time)/NANOS_PER_SECOND), "f/s")
       next_report_time += NANOS_PER_SECOND
