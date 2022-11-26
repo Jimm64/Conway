@@ -20,10 +20,7 @@ class BoardState:
     def update(self, strategy):
 
         strategy.update(self)
-
-        cells = self.cells
-        self.cells = self.new_cells
-        self.new_cells = cells
+        self.new_cells, self.cells = self.cells, self.new_cells
 
         for observer in self.observers:
             observer.on_update(self)
@@ -36,8 +33,8 @@ class BoardState:
         self.observers = []
         self.rows = rows
         self.cols = cols
-        self.cells = numpy.zeros((rows+2) * (cols+2),dtype=numpy.int32)
-        self.new_cells = numpy.zeros((rows+2) * (cols+2),dtype=numpy.int32)
+        self.cells = numpy.zeros((rows+2) * (cols+2),dtype=numpy.uint8)
+        self.new_cells = numpy.zeros((rows+2) * (cols+2),dtype=numpy.uint8)
 
     def from_string(string):
 
