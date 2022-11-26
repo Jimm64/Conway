@@ -12,6 +12,7 @@ arg_parser.add_argument("--screen-dimensions", dest="screen_dimensions", nargs=2
 arg_parser.add_argument("--cuda", action="store_true", dest="use_cuda_strategy", required=False, default=False, help="Use CUDA to update board state.")
 arg_parser.add_argument("--display-as-text", action="store_true", dest="use_text_display", required=False, default=False, help="Display board as text instead of using OpenGL.")
 arg_parser.add_argument("--display-as-ansi-text", action="store_true", dest="use_ansi_text_display", required=False, default=False, help="Display board as text, using ANSI control characters.")
+arg_parser.add_argument("--runtime", dest="run_time", nargs=1, required=False, type=int, default=None, help="Stop after the given number of seconds")
 args = arg_parser.parse_args()
 
 print_stats = False
@@ -42,7 +43,7 @@ else:
   from pythonboardstrategy import StraightPythonUpdateStrategy
   update_strategy = StraightPythonUpdateStrategy(opengl_draw_state=opengl_draw_state)
 
-start_time = time.time_ns()
+original_start_time = start_time = time.time_ns()
 next_report_time = start_time + NANOS_PER_SECOND
 
 update_count_at_last_report = 0
@@ -61,3 +62,5 @@ while True:
       next_report_time += NANOS_PER_SECOND
       start_time = current_time
       update_count_at_last_report = update_count
+  if args.run_time is not None and current_time >= original_start_time + args.run_time[0] * NANOS_PER_SECOND:
+    sys.exit(0)
