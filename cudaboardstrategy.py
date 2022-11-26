@@ -11,7 +11,7 @@ class CudaUpdateStrategy(UpdateStrategy):
 
     # CUDA seems to want us to pass in something for the colors array
     # even if we aren't using a display that has them.
-    self.empty_cell_color_array = numpy.zeros(0, dtype=numpy.float32)
+    self.empty_cell_color_array = numpy.zeros(0, dtype=numpy.uint8)
 
   def update(self, board_state):
     if self.opengl_draw_state:
@@ -98,7 +98,7 @@ class CudaUpdateStrategy(UpdateStrategy):
             # Likewise set what color the cell should now be.
             cell_color_index = 3 * 4 * x
             for corner in range(0, 4):
-              cell_colors[cell_color_index + corner * 3 + 2] = new_cells[cell_array_index] 
+              cell_colors[cell_color_index + corner * 3 + 2] = 127 * new_cells[cell_array_index] 
 
 class CudaStrategyUpdateTests(BoardStateTests, unittest.TestCase):
 

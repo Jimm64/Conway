@@ -5,7 +5,7 @@ class OpenGLDrawState():
     def __init__(self):
         self.rows = 0
         self.cols = 0
-        self.opengl_cell_colors = numpy.zeros(0, dtype=numpy.float32)
+        self.opengl_cell_colors = numpy.zeros(0, dtype=numpy.uint8)
         self.opengl_cell_corners = numpy.zeros(0, dtype=numpy.float32)
 
     def get_opengl_cell_vertex_colors(self):
@@ -18,7 +18,7 @@ class OpenGLDrawState():
 
       # Check if array needs to grow
       if rows * cols * 3 * 4 > len(self.opengl_cell_colors):
-        self.opengl_cell_colors = numpy.zeros(3 * 4 * cols * rows, dtype=numpy.float32)
+        self.opengl_cell_colors = numpy.zeros(3 * 4 * cols * rows, dtype=numpy.uint8)
         self.opengl_cell_corners = numpy.zeros(2 * 4 * cols * rows, dtype=numpy.float32)
 
 

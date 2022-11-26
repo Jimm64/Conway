@@ -11,7 +11,7 @@ class OpenGLScreen(GameScreen, BoardObserver):
 
     def on_update(self, board_state):
 
-      glColorPointer(3, GL_FLOAT, 0, self.opengl_draw_state.get_opengl_cell_vertex_colors())
+      glColorPointer(3, GL_BYTE, 0, self.opengl_draw_state.get_opengl_cell_vertex_colors())
       glVertexPointer(2, GL_FLOAT, 0, self.opengl_draw_state.get_opengl_cell_corner_vertices())
       glDrawArrays(GL_QUADS, 0, len(self.opengl_draw_state.get_opengl_cell_corner_vertices()) // 2)
       glutSwapBuffers()

@@ -48,7 +48,7 @@ class StraightPythonUpdateStrategy(UpdateStrategy):
             cell_color_index = 3 * 4 * x
             for corner in range(0, 4):
               self.opengl_draw_state.get_opengl_cell_vertex_colors()[
-                  cell_color_index + corner * 3 + 2] = new_cells[cell_array_index]
+                  cell_color_index + corner * 3 + 2] = 127 * new_cells[cell_array_index]
 
 
 class StraightPythonStrategyUpdateTests(BoardStateTests, unittest.TestCase):
