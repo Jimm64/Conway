@@ -1,10 +1,11 @@
 from boardstate import BoardObserver
 from gldrawstate import OpenGLDrawState
 from OpenGL.GL import *
-from OpenGL.GLUT import *
 from OpenGL.GLU import *
 from screen import GameScreen
+from pygame.locals import *
 import numpy
+import pygame
 
 
 class OpenGLScreen(GameScreen, BoardObserver):
@@ -14,9 +15,13 @@ class OpenGLScreen(GameScreen, BoardObserver):
       glColorPointer(3, GL_BYTE, 0, self.opengl_draw_state.get_opengl_cell_vertex_colors())
       glVertexPointer(2, GL_FLOAT, 0, self.opengl_draw_state.get_opengl_cell_corner_vertices())
       glDrawArrays(GL_QUADS, 0, len(self.opengl_draw_state.get_opengl_cell_corner_vertices()) // 2)
-      glutSwapBuffers()
 
-      glutMainLoopEvent()
+      pygame.display.flip()
+
+      for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+          pygame.quit()
+          quit()
     
     def get_opengl_draw_state(self):
         return self.opengl_draw_state
@@ -26,13 +31,9 @@ class OpenGLScreen(GameScreen, BoardObserver):
         self.screen_width = width
         self.screen_height = height
 
-        glutInit()
-        glutInitDisplayMode(GLUT_RGBA)
-        glutInitWindowSize(self.screen_width, self.screen_height)
-        glutInitWindowPosition(0, 0)
-        self.window = glutCreateWindow("Wrath of Conway")
-        glutDisplayFunc(self.do_nothing)
-        glutIdleFunc(self.do_nothing)
+        pygame.init()
+        pygame.display.set_mode((width, height), DOUBLEBUF|OPENGL)
+
 
         glLoadIdentity()
         glViewport(0, 0, self.screen_width, self.screen_height)
