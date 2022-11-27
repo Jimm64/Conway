@@ -1,5 +1,7 @@
+from board.boardstate import BoardState
 from board.boardstate import UpdateStrategy
 from board.boardstate import BoardStateTests
+from screen.gldrawstate import OpenGLDrawState
 import unittest
 
 class StraightPythonUpdateStrategy(UpdateStrategy):
@@ -66,7 +68,8 @@ class StraightPythonStrategyUpdateTests(BoardStateTests, unittest.TestCase):
   """Run BoardStateTests for the straight Python update strategy."""
 
   def setUp(self):
-    self.strategy=StraightPythonUpdateStrategy()
+    self.opengl_draw_state = OpenGLDrawState()
+    self.strategy=StraightPythonUpdateStrategy(opengl_draw_state=self.opengl_draw_state)
 
 if __name__ == '__main__':
     unittest.main()

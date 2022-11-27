@@ -1,6 +1,7 @@
 from numba import jit, cuda
 from board.boardstate import UpdateStrategy
 from board.boardstate import BoardStateTests
+from screen.gldrawstate import OpenGLDrawState
 import numpy
 import unittest
 
@@ -37,7 +38,7 @@ class CudaUpdateStrategy(UpdateStrategy):
     # Allocate a CUDA stream to serialize this (not really necessary but could improve
     # efficiency if multiple boards were being udpated at the smae time)
     cuda_stream = cuda.stream()
-    new_cells_gpu = cuda.device_array_like(board_state.new_cells, stream=cuda_stream)
+    new_cells_gpu = cuda.to_device(board_state.new_cells, copy=False, stream=cuda_stream)
     cells_gpu = cuda.to_device(board_state.cells, stream=cuda_stream)
 
     # This strategy can also leverage CUDA to update color arrays when drawing
@@ -49,7 +50,13 @@ class CudaUpdateStrategy(UpdateStrategy):
       # Pass an empty array. We must pass something to our update_cell
       # function, but it knows to ignore an empty array.
       cell_colors = self.empty_cell_color_array
-    cell_colors_gpu = cuda.device_array_like(cell_colors, stream=cuda_stream)
+
+    # Copy current cell colors to the device array (the default behavior but
+    # explicitly stated here) even though the kernel doesn't use them.  For some
+    # reason, if they aren't copied, writes to new_cells also write to this array
+    # and incorrect coloring(red and green) appears periodically.
+    cell_colors_gpu = cuda.to_device(cell_colors, copy=True,
+        stream=cuda_stream)
 
     self.update_cell[threads_per_block, blocks_per_grid, cuda_stream](
       new_cells_gpu, cells_gpu, 
@@ -113,6 +120,7 @@ class CudaUpdateStrategy(UpdateStrategy):
 
       if len(cell_colors) > 0:
         # Likewise set what color the cell should now be.
+        # Each cell gets three color values (red, green, blue), for four vertices.
         cell_color_index = 3 * 4 * x
         for corner in range(0, 4):
           cell_colors[cell_color_index + corner * 3 + 2] = 127 * new_cells[cell_array_index] 
@@ -121,7 +129,8 @@ class CudaStrategyUpdateTests(BoardStateTests, unittest.TestCase):
   """Run BoardStateTests for the CUDA update strategy."""
 
   def setUp(self):
-    self.strategy=CudaUpdateStrategy()
+    self.opengl_draw_state = OpenGLDrawState()
+    self.strategy=CudaUpdateStrategy(opengl_draw_state=self.opengl_draw_state)
 
 if __name__ == '__main__':
   unittest.main()

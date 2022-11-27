@@ -232,5 +232,32 @@ class BoardStateTests():
       "X-X\n" +
       "XXX")
 
+  def test_draw_state_is_updated(self):
+
+    board_state = BoardState.from_string(
+      "XXX\n" +
+      "---\n" +
+      "---")
+
+    board_state.update(strategy=self.strategy)
+
+    self.assertEqual(board_state.to_string(),
+      "-X-\n" +
+      "-X-\n" +
+      "---")
+
+    # One value for each of red/green/blue * four corners * board dimensions.
+    expected_cell_colors = [0] * (3 * 4 * 3 * 3)
+
+    for cell_index in [1, 4]:
+      # Cell index, at a given corner's blue value.
+      expected_cell_colors[3 * 4 * cell_index + 0 * 3 + 2] = 127
+      expected_cell_colors[3 * 4 * cell_index + 1 * 3 + 2] = 127
+      expected_cell_colors[3 * 4 * cell_index + 2 * 3 + 2] = 127
+      expected_cell_colors[3 * 4 * cell_index + 3 * 3 + 2] = 127
+
+    self.assertEqual(list(self.opengl_draw_state.get_opengl_cell_vertex_colors()), 
+        expected_cell_colors)
+
 if __name__ == '__main__':
   unittest.main()
