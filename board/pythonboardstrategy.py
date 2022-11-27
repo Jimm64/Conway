@@ -1,5 +1,5 @@
-from boardstate import UpdateStrategy
-from boardstate import BoardStateTests
+from board.boardstate import UpdateStrategy
+from board.boardstate import BoardStateTests
 import unittest
 
 class StraightPythonUpdateStrategy(UpdateStrategy):

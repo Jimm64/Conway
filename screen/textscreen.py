@@ -1,5 +1,5 @@
-from boardstate import BoardObserver
-from screen import GameScreen
+from board.boardstate import BoardObserver
+from screen.screen import GameScreen
 import time
 import sys
 

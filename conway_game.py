@@ -1,4 +1,4 @@
-from boardstate import BoardState
+from board.boardstate import BoardState
 import argparse
 import sys
 import time
@@ -23,13 +23,13 @@ board_state.randomize_state()
 opengl_draw_state = None
 
 if args.use_ansi_text_display:
-  from textscreen import AnsiTextScreen
+  from screen.textscreen import AnsiTextScreen
   screen = AnsiTextScreen(*args.screen_dimensions)
 elif args.use_text_display:
-  from textscreen import TextScreen
+  from screen.textscreen import TextScreen
   screen = TextScreen(*args.screen_dimensions)
 else:
-  from glscreen import OpenGLScreen
+  from screen.glscreen import OpenGLScreen
   print_stats = True
   screen = OpenGLScreen(*args.screen_dimensions)
   opengl_draw_state = screen.get_opengl_draw_state()
@@ -37,10 +37,10 @@ else:
 board_state.add_observer(screen)
 
 if args.use_cuda_strategy:
-  from cudaboardstrategy import CudaUpdateStrategy
+  from board.cudaboardstrategy import CudaUpdateStrategy
   update_strategy = CudaUpdateStrategy(opengl_draw_state=opengl_draw_state)
 else:
-  from pythonboardstrategy import StraightPythonUpdateStrategy
+  from board.pythonboardstrategy import StraightPythonUpdateStrategy
   update_strategy = StraightPythonUpdateStrategy(opengl_draw_state=opengl_draw_state)
 
 original_start_time = start_time = time.time_ns()

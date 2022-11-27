@@ -1,9 +1,9 @@
-from boardstate import BoardObserver
-from gldrawstate import OpenGLDrawState
+from board.boardstate import BoardObserver
 from OpenGL.GL import *
 from OpenGL.GLU import *
-from screen import GameScreen
 from pygame.locals import *
+from screen.gldrawstate import OpenGLDrawState
+from screen.screen import GameScreen
 import numpy
 import pygame
 
