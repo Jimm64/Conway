@@ -57,10 +57,12 @@ while True:
   current_time = time.time_ns()
 
   if print_stats and current_time >= next_report_time:
-      print("Update rate:", (update_count - update_count_at_last_report) 
-        / ((current_time - start_time)/NANOS_PER_SECOND), "f/s")
-      next_report_time += NANOS_PER_SECOND
-      start_time = current_time
-      update_count_at_last_report = update_count
+
+    print("Update rate:", (update_count - update_count_at_last_report) 
+      / ((current_time - start_time)/NANOS_PER_SECOND), "f/s")
+    next_report_time += NANOS_PER_SECOND
+    start_time = current_time
+    update_count_at_last_report = update_count
+
   if args.run_time is not None and current_time >= original_start_time + args.run_time[0] * NANOS_PER_SECOND:
     sys.exit(0)

@@ -3,16 +3,19 @@ import numpy
 class OpenGLDrawState():
 
     def __init__(self):
-        self.rows = 0
-        self.cols = 0
-        self.opengl_cell_colors = numpy.zeros(0, dtype=numpy.uint8)
-        self.opengl_cell_corners = numpy.zeros(0, dtype=numpy.float32)
+
+      self.rows = 0
+      self.cols = 0
+      self.opengl_cell_colors = numpy.zeros(0, dtype=numpy.uint8)
+      self.opengl_cell_corners = numpy.zeros(0, dtype=numpy.float32)
 
     def get_opengl_cell_vertex_colors(self):
-        return self.opengl_cell_colors
+
+      return self.opengl_cell_colors
     
     def get_opengl_cell_corner_vertices(self):
-        return self.opengl_cell_corners
+
+      return self.opengl_cell_corners
     
     def set_cell_dimensions(self, rows, cols):
 

@@ -24,33 +24,35 @@ class OpenGLScreen(GameScreen, BoardObserver):
           quit()
     
     def get_opengl_draw_state(self):
-        return self.opengl_draw_state
+
+      return self.opengl_draw_state
 
     def __init__(self, width, height):
-        self.opengl_draw_state = OpenGLDrawState()
-        self.screen_width = width
-        self.screen_height = height
 
-        pygame.init()
-        pygame.display.set_mode((width, height), DOUBLEBUF|OPENGL)
+      self.opengl_draw_state = OpenGLDrawState()
+      self.screen_width = width
+      self.screen_height = height
+
+      pygame.init()
+      pygame.display.set_mode((width, height), DOUBLEBUF|OPENGL)
 
 
-        glLoadIdentity()
-        glViewport(0, 0, self.screen_width, self.screen_height)
+      glLoadIdentity()
+      glViewport(0, 0, self.screen_width, self.screen_height)
 
-        glMatrixMode(GL_PROJECTION)
-        glLoadIdentity()
-        glOrtho(0, 1.0, 0, 1.0, 0, 1.0)
+      glMatrixMode(GL_PROJECTION)
+      glLoadIdentity()
+      glOrtho(0, 1.0, 0, 1.0, 0, 1.0)
 
-        glMatrixMode(GL_MODELVIEW)
-        glLoadIdentity()
+      glMatrixMode(GL_MODELVIEW)
+      glLoadIdentity()
 
-        glEnableClientState(GL_COLOR_ARRAY)
+      glEnableClientState(GL_COLOR_ARRAY)
 
-        glEnableClientState(GL_VERTEX_ARRAY)
-    
+      glEnableClientState(GL_VERTEX_ARRAY)
+  
 
     def do_nothing(self):
-        pass
+      pass
 
 
