@@ -10,22 +10,37 @@ class UpdateStrategy(ABC):
     pass
 
 class BoardObserver(ABC):
+  """
+    Object that can be registered with the BoardState via
+    BoardState.add_observer, to be called when the state changes.
+  """
 
   @abstractmethod
   def on_update(self, board_state):
+    """Called whenver the board state changes."""
     pass
 
 class BoardState:
+    """Stores the state of the cells (alive or dead) on the board."""
 
     def update(self, strategy):
-
+      """
+        Perform one iteration of the game, updating which cells
+        are alive or dead.
+      """
+      
+      # Delegate to whatever strategy was chosen.
       strategy.update(self)
+
+      # Swap the cell arrays.
       self.new_cells, self.cells = self.cells, self.new_cells
 
+      # Notify observers
       for observer in self.observers:
         observer.on_update(self)
 
     def add_observer(self, observer):
+      """Add an observer so that it receives notification of state updates."""
       self.observers.append(observer)
 
     def __init__(self, rows, cols):
@@ -33,10 +48,26 @@ class BoardState:
       self.observers = []
       self.rows = rows
       self.cols = cols
+
+      # Use numpy arrays to support updating via CUDA (though they also
+      # work with straight Python)
       self.cells = numpy.zeros((rows+2) * (cols+2),dtype=numpy.uint8)
       self.new_cells = numpy.zeros((rows+2) * (cols+2),dtype=numpy.uint8)
 
     def from_string(string):
+      """
+        Create a BoardState with state specified by a string which uses:
+        - 'X' as a live cell
+        - '-' as a dead cell
+        - '\\n' (newline) as the end of a row
+
+        Example:
+
+          board_state = BoardState.from_string(
+            "XXX\\n" +
+            "---\\n" +
+            "---")
+      """
 
       row_strings = string.split("\n")
       rows = len(row_strings)
@@ -59,6 +90,7 @@ class BoardState:
 
 
     def randomize_state(self):
+      """Set board state to a random set of live/dead cells."""
 
       for row in range(0, self.rows):
         for col in range (0, self.cols):
@@ -70,20 +102,27 @@ class BoardState:
       return
 
     def cell_state(self, row, col):
+      """ Returns True if the cell at the given location is alive, False otherwise."""
 
       return False if self.cells[(row+1) * (self.cols+2) + (col+1)] == 0 else True
 
     def set_cell(self, row, col):
+      """Set a cell as alive."""
 
       self.cells[(row+1) * (self.cols+2) + (col+1)] = 1
-      return
 
     def clear_cell(self, row, col):
+      """Set a cell as dead."""
 
       self.cells[(row+1) * (self.cols+2) + (col+1)] = 0
-      return
 
     def to_string(self):
+      """
+        Return the state of the board in the form of a string which uses:
+        - 'X' as a live cell
+        - '-' as a dead cell
+        - '\\n' (newline) as the end of a row
+      """
 
       board_string = ""
       for row in range(0, self.rows):
@@ -95,6 +134,20 @@ class BoardState:
 
 
 class BoardStateTests():
+  """
+    BoardState unit tests.
+
+    Intended for objects that define a strategy for upating the board.  The
+    strategy object should create a unit test class that inherits this object
+    and unittest.TestCase, and then specifies the strategy to test, e.g.:
+
+      class SomeUpdateStrategyTests(BoardStateTests, unittest.TestCase):
+
+        def setUp(self):
+          self.strategy=SomeUpdateStrategy()
+
+    These tests will then be run using that update strategy.
+  """
 
   def test_board_can_init_from_string(self):
     board_state = BoardState.from_string(

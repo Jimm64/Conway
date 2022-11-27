@@ -3,25 +3,38 @@ from board.boardstate import BoardStateTests
 import unittest
 
 class StraightPythonUpdateStrategy(UpdateStrategy):
+  """Strategy to update the board state using standard Python code."""
 
   def __init__(self, opengl_draw_state=None):
 
     self.opengl_draw_state = opengl_draw_state
 
   def update(self, board_state):
+    """Update the board state."""
 
     if self.opengl_draw_state:
       self.opengl_draw_state.set_cell_dimensions(board_state.rows, board_state.cols)
     self.update_cells(board_state.new_cells, board_state.cells, board_state.rows, 
       board_state.cols)
 
-  def update_cells(self, new_cells, cells, max_rows, max_cols):
+  def update_cells(self, new_cells, cells, num_rows, num_cols):
+    """Update the cells on the board."""
 
-    size_of_row = max_cols + 2
+    # Keep any live cell with 2 or 3 neighbors.
+    keep_cell_on_neighbor_counts = (0, 0, 1, 1, 0, 0, 0, 0, 0)
 
-    for x in range (max_cols * max_rows):
+    # Add a ell on any space with three live neighbors.
+    add_cell_on_neighbor_counts =  (0, 0, 0, 1, 0, 0, 0, 0, 0)
 
-      cell_array_index = (x // max_cols + 1) * (max_cols + 2) + (x % max_cols + 1)
+    size_of_row = num_cols + 2
+
+    for x in range (num_cols * num_rows):
+
+      # The board state is bordered by empty cells, so that we don't have
+      # to account for neighbor locations being out of bounds.
+      # But we do have to account for the empty cells when determining
+      # which cell in our (one-dimensional) array is the current one.
+      cell_array_index = (x // num_cols + 1) * (num_cols + 2) + (x % num_cols + 1)
 
       # Count neighbors.
       cell_neighbor_count  = cells[cell_array_index - size_of_row - 1]
@@ -37,12 +50,9 @@ class StraightPythonUpdateStrategy(UpdateStrategy):
 
       # Set whether the cell is alive or dead based on
       # neighbor count and current state.
-      if cell_neighbor_count < 2 or cell_neighbor_count > 3:
-        new_cells[cell_array_index] = 0
-      elif cell_neighbor_count == 3:
-        new_cells[cell_array_index] = 1
-      else:
-        new_cells[cell_array_index] = cells[cell_array_index]
+      new_cells[cell_array_index] = cells[cell_array_index]
+      new_cells[cell_array_index] &= keep_cell_on_neighbor_counts[cell_neighbor_count]
+      new_cells[cell_array_index] |= add_cell_on_neighbor_counts[cell_neighbor_count]
 
       if self.opengl_draw_state:
         # Likewise set what color the cell should now be.
@@ -53,9 +63,10 @@ class StraightPythonUpdateStrategy(UpdateStrategy):
 
 
 class StraightPythonStrategyUpdateTests(BoardStateTests, unittest.TestCase):
+  """Run BoardStateTests for the straight Python update strategy."""
 
-    def setUp(self):
-      self.strategy=StraightPythonUpdateStrategy()
+  def setUp(self):
+    self.strategy=StraightPythonUpdateStrategy()
 
 if __name__ == '__main__':
     unittest.main()

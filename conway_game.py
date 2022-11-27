@@ -3,6 +3,8 @@ import argparse
 import sys
 import time
 
+# Play Conway's game of life.
+
 NANOS_PER_SECOND = 1000000000
 
 arg_parser = argparse.ArgumentParser("Conway's Game of Life")
@@ -22,6 +24,8 @@ board_state.randomize_state()
 
 opengl_draw_state = None
 
+# Set desired method of displaying the board state based on commandline options.
+# (framerate stats not displayed for text displays, since both print to the console)
 if args.use_ansi_text_display:
   from screen.textscreen import AnsiTextScreen
   screen = AnsiTextScreen(*args.screen_dimensions)
@@ -34,8 +38,10 @@ else:
   screen = OpenGLScreen(*args.screen_dimensions)
   opengl_draw_state = screen.get_opengl_draw_state()
 
+# Ensure our method of display is notified as the board state changes.
 board_state.add_observer(screen)
 
+# Run CUDA kernels to update the board and/or display, if indicated to do so.
 if args.use_cuda_strategy:
   from board.cudaboardstrategy import CudaUpdateStrategy
   update_strategy = CudaUpdateStrategy(opengl_draw_state=opengl_draw_state)
@@ -56,6 +62,7 @@ while True:
 
   current_time = time.time_ns()
 
+  # Periodically provide update rate statistics, if specified.
   if print_stats and current_time >= next_report_time:
 
     print("Update rate:", (update_count - update_count_at_last_report) 
@@ -64,5 +71,6 @@ while True:
     start_time = current_time
     update_count_at_last_report = update_count
 
+  # Stop if a runtime was specified and it has elapsed.
   if args.run_time is not None and current_time >= original_start_time + args.run_time[0] * NANOS_PER_SECOND:
     sys.exit(0)
