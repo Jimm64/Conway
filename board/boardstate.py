@@ -4,6 +4,9 @@ import numpy
 from abc import ABC, abstractmethod
 
 class UpdateStrategy(ABC):
+  """
+    Object for implementing a given way to update the board state.
+  """
 
   @abstractmethod
   def update(self, board_state):
